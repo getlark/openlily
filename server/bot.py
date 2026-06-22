@@ -1,9 +1,3 @@
-#
-# Copyright (c) 2024–2025, Daily
-#
-# SPDX-License-Identifier: BSD 2-Clause License
-#
-
 """openlily - Pipecat Voice Agent.
 
 A simple voice bot: voice in -> LLM -> voice out. The "brain" is swappable

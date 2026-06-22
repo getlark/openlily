@@ -158,7 +158,28 @@ cut the bot off) is **disabled by default**; if you want to try it, flip
 A session ends itself after a stretch of silence (no one speaking); tune it with
 `IDLE_TIMEOUT_SECS`.
 
+## Getting help
+
+Running into issues or have questions? Ask in [Slack](https://join.slack.com/t/larkcommunity/shared_invite/zt-3wqmfghs7-Rjbd74jt_bLac534lFwIQw), open an
+issue on GitHub, or email [team@getlark.ai](mailto:team@getlark.ai).
+
 ## Contributing
 
 Architecture, dev setup, and how to add brains and tools live in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Built with
+
+openlily stands on the shoulders of excellent open-source projects, including:
+
+- [Pipecat](https://github.com/pipecat-ai/pipecat) — the real-time voice agent framework
+- [LiveKit](https://github.com/livekit/python-sdks) — the WebRTC Audio Processing Module (AEC/noise suppression/AGC)
+- [openWakeWord](https://github.com/dscripka/openWakeWord) — on-device wake-word detection
+- [Silero VAD](https://github.com/snakers4/silero-vad) — on-device voice activity detection
+- [Exa](https://exa.ai/) and [Resend](https://resend.com/) — web search and email tools
+
+Thanks to their authors and communities.
+
+## License
+
+openlily is released under the [MIT License](LICENSE), © 2026 Hamilton Labs, Inc.
