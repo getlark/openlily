@@ -1,0 +1,37 @@
+# brains.yaml - choose the brain and override its STT / TTS / LLM model names
+# and TTS voice. Copy this file to `brains.yaml` (git-ignored, like .env) and
+# change what you want. Omit any per-brain key to keep the built-in default.
+# A present-but-invalid file (bad YAML, unknown brain/field, wrong type, or a
+# missing default_brain) is a startup error.
+
+# Which brain to run: openai_standard | cartesia_openai | openai_realtime.
+# Required: if this file exists it MUST set default_brain (else startup errors).
+default_brain: cartesia_openai
+
+# OpenAI STT + LLM + TTS cascade.
+openai_standard:
+  stt:
+    model: gpt-4o-transcribe
+  llm:
+    model: gpt-5.4-mini
+  tts:
+    model: gpt-4o-mini-tts
+    voice: marin
+
+# Cartesia STT/TTS + OpenAI LLM cascade.
+cartesia_openai:
+  stt:
+    model: ink-2
+  llm:
+    model: gpt-5.4-mini
+  tts:
+    model: sonic-3.5
+    voice: db6b0ed5-d5d3-463d-ae85-518a07d3c2b4
+
+# OpenAI Realtime (speech-to-speech). It has no separate STT/TTS service, so
+# `stt.model` here is the model's internal transcription model.
+openai_realtime:
+  stt:
+    model: gpt-4o-transcribe
+  llm:
+    model: gpt-realtime-2

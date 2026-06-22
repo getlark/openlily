@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "bot.py (local-with-wake-word)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/bot.py",
+      "cwd": "${workspaceFolder}/server",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/server/.venv/bin/python",
+      "envFile": "${workspaceFolder}/server/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "bot.py --mode local",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/bot.py",
+      "cwd": "${workspaceFolder}/server",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/server/.venv/bin/python",
+      "envFile": "${workspaceFolder}/server/.env",
+      "args": ["--mode", "local"],
+      "justMyCode": false
+    },
+    {
+      "name": "bot.py --mode webrtc",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/bot.py",
+      "cwd": "${workspaceFolder}/server",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/server/.venv/bin/python",
+      "envFile": "${workspaceFolder}/server/.env",
+      "args": ["--mode", "webrtc"],
+      "justMyCode": false
+    }
+  ]
+}
