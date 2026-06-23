@@ -83,6 +83,15 @@ WORKING_SOUND_INITIAL_DELAY_SECS = 0.8
 # so a heartbeat always lands well before the idle timer can expire.
 IDLE_KEEPALIVE_MAX_INTERVAL_SECS = 5.0
 
+# Absolute worst-case cap on a single continuous "bot is busy" window (see
+# idle_keepalive.py). The keep-alive normally disarms when the bot starts
+# speaking; if it never does - e.g. STT returns an empty transcript for
+# background noise, or the LLM/TTS stalls - its heartbeats would otherwise reset
+# the idle timer forever and the session could never time out. This cap lets the
+# idle timer eventually win. Kept generously high so a legitimately long think or
+# tool call is never cut off; this is purely a stuck-session backstop.
+IDLE_KEEPALIVE_MAX_BUSY_SECS = 300.0
+
 
 def _idle_keepalive_interval_secs() -> float:
     """Heartbeat cadence kept safely below the idle timeout.
@@ -152,7 +161,8 @@ async def _build_pipeline(
     # correctness fix, not a flourish. BotBusyFrame is registered in the worker's
     # idle_timeout_frames (see _build_worker).
     idle_keepalive = IdleKeepaliveProcessor(
-        interval_secs=_idle_keepalive_interval_secs()
+        interval_secs=_idle_keepalive_interval_secs(),
+        max_busy_secs=IDLE_KEEPALIVE_MAX_BUSY_SECS,
     )
 
     # Soft "working" cue, sitting just before transport.output() so it sees the
