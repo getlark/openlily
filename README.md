@@ -92,7 +92,9 @@ without the file the default is `cartesia_openai`):
 Which to pick:
 
 - **`cartesia_openai` (default)** — the most effective overall: intelligent OpenAI
-  LLM paired with Cartesia's strong speech-to-text and smooth, natural TTS.
+  LLM paired with Cartesia's strong speech-to-text and smooth, natural TTS. The
+  default LLM is `gpt-5.4-mini`; bump it to a more capable model like `gpt-5.5` in
+  `brains.yaml` for higher intelligence at the cost of slower replies.
 - **`openai_standard`** — the easiest to set up: a single OpenAI API key gets you
   everything (STT, LLM, TTS), no second provider.
 - **`openai_realtime`** — feels the fastest, since there's no separate STT/TTS
