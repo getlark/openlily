@@ -12,6 +12,21 @@ Run it:
     uv run bot.py --mode local-with-wake-word  # local, but say the wake word first; one warm process
 """
 
+import sys
+
+# Printed before the heavy imports below (Pipecat, ML runtimes, the brains),
+# which take a few seconds warm and tens of seconds on the very first run while
+# Python compiles them to bytecode. Without this the terminal looks frozen until
+# the first real log line lands. stderr + flush so it shows immediately; guarded
+# so importing this module (e.g. in tests) stays quiet.
+if __name__ == "__main__":
+    print(
+        "Starting openlily - loading modules (this takes several seconds, "
+        "and up to a minute on the first run while dependencies compile)...",
+        file=sys.stderr,
+        flush=True,
+    )
+
 import os
 
 from dotenv import load_dotenv
@@ -299,6 +314,10 @@ async def run_session(*, handle_sigint: bool) -> None:
     logger.info(f"Starting session (brain={brain.name}, realtime={brain.is_realtime})")
 
     transport = build_local_transport()
+    # Building the pipeline loads the on-device VAD model and constructs the
+    # brain's services - a brief silent stretch on a fresh process. Narrate it so
+    # the terminal doesn't look stuck before the readiness chime.
+    logger.info("Preparing models and audio...")
     pipeline, tool_bundle = await _build_pipeline(transport, brain)
     worker = _build_worker(pipeline)
 
@@ -348,6 +367,10 @@ def run_wake_gated() -> None:
     from wakeword import PyAudioSource, WakeWordEngine, WakeWordListener
 
     models = _wake_models()
+    # Constructing the engine imports openwakeword/onnxruntime and loads the
+    # models (downloaded once on the first run) - a few silent seconds. Narrate it
+    # so the terminal doesn't look frozen; the "ready" log below marks completion.
+    logger.info("Loading on-device wake-word detection (importing models)...")
     # Threshold and inference framework use WakeWordEngine's defaults (0.5, onnx).
     listener = WakeWordListener(WakeWordEngine(models=models), PyAudioSource())
 

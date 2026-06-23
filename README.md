@@ -73,6 +73,11 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
    uv run bot.py --mode webrtc                # browser debug UI at localhost:7860
    ```
 
+   The first run takes longer to start — usually several seconds, and up to a
+   minute — while Python compiles dependencies and the on-device wake-word/VAD
+   models download once. The terminal prints a "loading modules" line right away
+   so you know it isn't stuck; later runs start in a few seconds.
+
 ## Personalizing your assistant
 
 openlily is meant to be configured to your needs. Three knobs:
