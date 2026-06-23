@@ -8,12 +8,13 @@ together. Copy this folder into another project to reuse it.
 
 from __future__ import annotations
 
-from .audio import AudioSource, PyAudioSource
+from .audio import AudioSource, AudioSourceStalled, PyAudioSource
 from .engine import WakeWordEngine
 from .listener import WakeWordListener
 
 __all__ = [
     "AudioSource",
+    "AudioSourceStalled",
     "PyAudioSource",
     "WakeWordEngine",
     "WakeWordListener",
