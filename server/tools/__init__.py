@@ -25,7 +25,7 @@ from .email import setup_email_tools
 # included -- comment out or remove an entry to drop a tool, append one to add it.
 GENERIC_TOOL_SETUPS: list[Callable[[], Awaitable[ToolBundle]]] = [
     # Note: include this if you want the agent to be able to use your local browser
-    # setup_browser_tools,
+    setup_browser_tools,
     # Note: include this if you want the agent to be able to send emails
     # setup_email_tools,
 ]

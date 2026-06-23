@@ -125,8 +125,11 @@ fine without them.
   built-in hosted web search automatically — no extra key. The `openai_realtime`
   brain instead calls Exa, so it needs `EXA_API_KEY` (without it, the realtime
   brain just runs without web search).
-- **Browser** (Playwright MCP) — drives a real local browser. Needs Node.js/`npx`;
-  no API key. Optionally set `BROWSER_USER_DATA_DIR` to keep a persistent profile.
+- **Browser** (Playwright MCP) — drives a real local browser. Needs Node.js/`npx`.
+  Attaches to an already-running browser over CDP rather than launching its own,
+  so set `BROWSER_CDP_ENDPOINT` (e.g. `http://localhost:9222`, from Chrome started
+  with `--remote-debugging-port=9222`) to enable it; the browser then persists
+  across sessions. Without that variable the browser tools are skipped.
 - **Email** (Resend) — sends email to your own address. Needs `USER_EMAIL`,
   `RESEND_API_KEY`, and a verified sender (`EMAIL_FROM`).
 
