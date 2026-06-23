@@ -39,13 +39,9 @@ from .config import (
 # Prompt snippet describing the browser capability. Attached to the bundle so
 # the system prompt mentions the browser only when the tools are actually wired
 # in (e.g. it's omitted when the MCP server fails to start).
-BROWSER_INSTRUCTION = (
-    "You can control a web browser to navigate to sites, read page contents, "
-    "and take actions on a page (clicking, typing, filling forms). It's slower "
-    "than web search, so reach for it when search and fetch fall short: when you "
-    "need something precise, live details from a specific page, or when a task requires "
-    "interacting with a site rather than just reading it."
-)
+BROWSER_INSTRUCTION = """
+You can control a web browser to navigate to sites, read page contents, and take actions on a page (clicking, typing, filling forms). It's slower than web search, so reach for it when search and fetch fall short: when you need something precise, live details from a specific page, or when a task requires interacting with a site rather than just reading it. When using browser tool try to perform the complete the task the user gave you --  it might require multiple steps to complete the task. For example, if the users asks to search for something, it's beter to find the relevant page and opoen that that shows relevant information rather than just doing an initial google search and asking the user to navigate to the page.
+"""
 
 
 async def setup_browser_tools() -> ToolBundle:
@@ -89,7 +85,9 @@ async def setup_browser_tools() -> ToolBundle:
     async def register(llm: LLMService) -> None:
         await mcp.register_tools_schema(tools, llm)
 
-    logger.info(f"Browser tools ready: {len(tools.standard_tools)} Playwright MCP tools")
+    logger.info(
+        f"Browser tools ready: {len(tools.standard_tools)} Playwright MCP tools"
+    )
     return ToolBundle(
         standard_tools=list(tools.standard_tools),
         instructions=[BROWSER_INSTRUCTION],
