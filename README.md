@@ -87,7 +87,7 @@ without the file the default is `cartesia_openai`):
 | --- | --- | --- | --- |
 | `openai_standard` | OpenAI | OpenAI | OpenAI |
 | `cartesia_openai` (default) | Cartesia (ink-2) | OpenAI | Cartesia (sonic-3.5) |
-| `openai_realtime` | OpenAI Realtime (GPT speech-to-speech: STT + LLM + TTS in one) | | |
+| `openai_realtime` | — | OpenAI Realtime (GPT speech-to-speech: STT + LLM + TTS in one) | — |
 
 Which to pick:
 
@@ -157,6 +157,21 @@ cut the bot off) is **disabled by default**; if you want to try it, flip
 
 A session ends itself after a stretch of silence (no one speaking); tune it with
 `IDLE_TIMEOUT_SECS`.
+
+## What you'll hear
+
+openlily uses a couple of small audio cues so you always know where you are in a
+turn, without watching the terminal:
+
+- **A rising two-note "ding"** when a session becomes ready — after the wake word
+  (or right at startup in `local` mode). It means you're connected and the mic is
+  live, so your voice is now being recorded as input.
+- **A soft, low "blip"** every few seconds while the bot is working — after you
+  finish speaking and the request is sent to the LLM, or during a tool call (web
+  search, browser, email). It's a quiet sign of life so you're not left in silence
+  while it thinks.
+- **The spoken reply.** Once the LLM is done, the blips stop and you hear the
+  answer through text-to-speech.
 
 ## Getting help
 

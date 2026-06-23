@@ -179,7 +179,7 @@ async def _build_pipeline(
 # mirroring the LiveKit agent's ``user_away_timeout``. Pipecat's idle detection
 # watches BotSpeakingFrame/UserSpeakingFrame by default, so this is "no one has
 # spoken for this long." Override with IDLE_TIMEOUT_SECS.
-DEFAULT_IDLE_TIMEOUT_SECS = 20.0
+DEFAULT_IDLE_TIMEOUT_SECS = 30.0
 
 
 def _idle_timeout_secs() -> float:
