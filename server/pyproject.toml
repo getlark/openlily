@@ -26,9 +26,16 @@ dependencies = [
 dev = [
     "pyright>=1.1.404,<2",
     "ruff>=0.12.11,<1",
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
 ]
 
 [tool.ruff]
 line-length = 100
 [tool.ruff.lint]
 select = ["I", "UP"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
