@@ -11,7 +11,7 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
 
 ## Demo
 
-**▶️ [Watch the demo video](https://youtu.be/Zp6WIQz0-O8?si=HrzU2_j3UUC7hNmV)** to see openlily in action.
+**[Watch the demo video](https://youtu.be/Zp6WIQz0-O8?si=HrzU2_j3UUC7hNmV)** to see openlily in action.
 
 <!-- TODO: replace docs/demo.gif with your GIF file (and update the link above). -->
 ![openlily demo](docs/demo_thumbnail.gif)
