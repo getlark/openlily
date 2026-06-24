@@ -52,6 +52,8 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 
+from sound import ReadinessChimeFrame
+
 # The bot's mic capture rate. 16 kHz is what OpenAI STT expects and is plenty
 # for speech; the APM processes capture at this rate.
 LOCAL_AUDIO_IN_SAMPLE_RATE = 16000
@@ -270,11 +272,19 @@ class _GatedInputTransport(LocalAudioInputTransport):
 
 
 class _GatedOutputTransport(LocalAudioOutputTransport):
-    """Local speaker output that marks the gate while the bot is speaking.
+    """Local speaker output that marks the gate while the bot plays audio.
 
-    Only ``TTSAudioRawFrame`` (the bot's spoken audio, for both the cascade and
-    realtime brains) closes the gate - the plain ``OutputAudioRawFrame`` readiness
-    chime does not, so it won't gate the user's first turn.
+    ``TTSAudioRawFrame`` (the bot's spoken audio, for both the cascade and
+    realtime brains) closes the gate, as does the ``ReadinessChimeFrame`` startup
+    "ding": both are played out the speaker, so gating the mic while they play
+    (plus a short tail) keeps their echo out of the capture path. The chime gate
+    matters most on a hardware speakerphone, where the chime's echo otherwise
+    poisons the freshly-started echo canceller and swallows the user's first
+    sentence. The soft "working" cue stays a plain ``OutputAudioRawFrame`` and is
+    deliberately not gated (it must not clip a user speaking during the bot's
+    think time). The base transport re-chunks each frame but preserves its class,
+    so - exactly like TTS - every chunk re-marks the gate and holds it closed for
+    the whole chime plus the tail.
     """
 
     def __init__(self, py_audio, params, gate: _SpeakerGate):
@@ -282,7 +292,7 @@ class _GatedOutputTransport(LocalAudioOutputTransport):
         self._gate = gate
 
     async def write_audio_frame(self, frame) -> bool:
-        if isinstance(frame, TTSAudioRawFrame):
+        if isinstance(frame, (TTSAudioRawFrame, ReadinessChimeFrame)):
             self._gate.mark_speaking()
         return await super().write_audio_frame(frame)
 
@@ -306,6 +316,11 @@ class _APMOutputTransport(_GatedOutputTransport):
     async def write_audio_frame(self, frame) -> bool:
         # Feed a copy of the played audio to the APM as the far-end reference;
         # the gated base then marks the speaker gate and plays the original audio.
+        # We feed every output frame, including the readiness chime, for
+        # consistency with TTS. For the chime it makes little practical difference
+        # either way: the mic is gated while it plays, so its echo is dropped from
+        # the pipeline regardless of cancellation - feeding it only nudges the
+        # echo canceller's filter, which the first real TTS reply re-adapts anyway.
         self._apm.process_render(
             frame.audio, self._sample_rate, self._params.audio_out_channels
         )

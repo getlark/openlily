@@ -35,7 +35,6 @@ from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
     BotSpeakingFrame,
-    OutputAudioRawFrame,
     UserSpeakingFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
@@ -62,7 +61,7 @@ from brains import (
 from idle_keepalive import BotBusyFrame, IdleKeepaliveProcessor
 from observers import ConversationLogObserver
 from prompt import build_system_instruction
-from sound import chime_pcm
+from sound import ReadinessChimeFrame, chime_pcm
 from tools import setup_generic_tools
 from working_sound import WorkingSoundProcessor
 
@@ -146,7 +145,7 @@ async def _build_pipeline(
                 params=VADParams(
                     confidence=0.8,
                     start_secs=0.3,
-                    min_volume=0.7,
+                    min_volume=0.5,
                 )
             ),
         ),
@@ -256,14 +255,18 @@ def _build_worker(pipeline: Pipeline) -> PipelineWorker:
 
     # Play a short "ding" the moment the pipeline is ready to accept audio, so
     # the user gets an audible acknowledgement that the bot is now listening
-    # (mirrors the LiveKit client's readiness chime). A plain OutputAudioRawFrame
-    # plays through the speakers without counting as bot speech, so it won't reset
+    # (mirrors the LiveKit client's readiness chime). A ReadinessChimeFrame still
+    # doesn't count as bot speech (it's not a TTSAudioRawFrame), so it won't reset
     # the idle timer or trigger interruption logic; the transport resamples it.
+    # Unlike a plain OutputAudioRawFrame, though, the local transport's half-duplex
+    # gate closes the mic while it plays so the chime's echo never reaches the
+    # capture path - on a hardware speakerphone that echo otherwise poisons the
+    # fresh echo canceller and swallows the user's first sentence (see sound.py).
     @worker.event_handler("on_pipeline_started")
     async def _on_pipeline_started(worker, _frame):
         pcm, sample_rate = chime_pcm()
         await worker.queue_frame(
-            OutputAudioRawFrame(audio=pcm, sample_rate=sample_rate, num_channels=1)
+            ReadinessChimeFrame(audio=pcm, sample_rate=sample_rate, num_channels=1)
         )
         logger.info("Pipeline ready; played readiness chime")
 

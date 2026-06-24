@@ -2,15 +2,19 @@
 
 Mirrors the LiveKit client's chime (livekit-client/.../sound.py): a quick rising
 two-note "ding" with a bell-like exponential decay. Here we only *generate* the
-PCM; playback goes through Pipecat's output transport (as an OutputAudioRawFrame)
-rather than a separate audio device, so it routes through the same speakers and
-the WebRTC APM uses it as an echo-cancellation reference.
+PCM; playback goes through Pipecat's output transport (as a
+``ReadinessChimeFrame``) rather than a separate audio device, so it routes
+through the same speakers and the WebRTC APM uses it as an echo-cancellation
+reference.
 """
 
 from __future__ import annotations
 
 import array
 import math
+from dataclasses import dataclass
+
+from pipecat.frames.frames import OutputAudioRawFrame
 
 SAMPLE_RATE = 44100
 # (frequency_hz, duration_seconds) per note. A quick rising two-note "ding".
@@ -35,6 +39,22 @@ def chime_pcm() -> tuple[bytes, int]:
             value = _AMPLITUDE * envelope * math.sin(2.0 * math.pi * freq * t)
             samples.append(int(max(-1.0, min(1.0, value)) * 32767))
     return samples.tobytes(), SAMPLE_RATE
+
+
+@dataclass
+class ReadinessChimeFrame(OutputAudioRawFrame):
+    """The readiness chime, as its own output-frame type so the mic can gate it.
+
+    It is a plain output frame (not a ``TTSAudioRawFrame``), so it still does not
+    count as bot speech - no idle-timer reset, no interruption logic. The only
+    reason it is a distinct subclass is so the local transport's half-duplex gate
+    (see ``transport_local.py``) can recognize it and drop the mic while it plays,
+    plus a short tail, keeping the chime's echo out of the capture path. On a
+    hardware speakerphone that echo otherwise poisons the freshly-started echo
+    canceller and swallows the user's first sentence. The soft "working" cue
+    (``working_sound.py``) stays a plain ``OutputAudioRawFrame`` and is therefore
+    deliberately *not* gated.
+    """
 
 
 # A low, soft "blip" cue played occasionally while the bot is busy (slow
