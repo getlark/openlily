@@ -36,14 +36,37 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
    uv sync
    ```
 
-   On macOS, the local-audio path needs PortAudio for PyAudio:
+   The local-audio path needs PortAudio for PyAudio. Install it for your OS:
 
-   ```bash
-   brew install portaudio
-   ```
+   - **macOS** (Homebrew):
+
+     ```bash
+     brew install portaudio
+     ```
+
+   - **Linux / Raspberry Pi** (Debian, Ubuntu, Raspberry Pi OS):
+
+     ```bash
+     sudo apt update
+     sudo apt install portaudio19-dev libportaudio2
+     ```
+
+     On a Raspberry Pi, also make sure your mic and speakers are recognized
+     (`arecord -l` and `aplay -l` should list them). A USB mic/speaker or a USB
+     audio interface is the simplest setup; pick the right input/output device
+     in your ALSA/PulseAudio config if you have more than one.
+
+     On Linux the wake-word stack pulls in `tflite-runtime`, which only ships
+     wheels for Python 3.11. The repo pins that version in `.python-version`, so
+     `uv sync` will use it automatically — install it once with
+     `uv python install 3.11` if you don't have it. (macOS doesn't need
+     `tflite-runtime`, so it isn't affected.)
 
    The browser tool (if you enable it) launches the Playwright MCP server via
-   `npx`, so it needs Node.js. On macOS: `brew install node`.
+   `npx`, so it needs Node.js. On macOS: `brew install node`. On Linux /
+   Raspberry Pi: `sudo apt install nodejs npm` (or install a current release
+   from [NodeSource](https://github.com/nodesource/distributions) if your
+   distro's packages are old).
 
 3. **Configure environment variables**:
 
