@@ -314,16 +314,25 @@ class _APMOutputTransport(_GatedOutputTransport):
         self._apm = apm
 
     async def write_audio_frame(self, frame) -> bool:
-        # Feed a copy of the played audio to the APM as the far-end reference;
-        # the gated base then marks the speaker gate and plays the original audio.
-        # We feed every output frame, including the readiness chime, for
-        # consistency with TTS. For the chime it makes little practical difference
-        # either way: the mic is gated while it plays, so its echo is dropped from
-        # the pipeline regardless of cancellation - feeding it only nudges the
-        # echo canceller's filter, which the first real TTS reply re-adapts anyway.
-        self._apm.process_render(
-            frame.audio, self._sample_rate, self._params.audio_out_channels
-        )
+        # Feed a copy of the played audio to the APM as the far-end reference, so
+        # the echo canceller can subtract the bot's own voice from the mic - then
+        # the gated base marks the speaker gate and plays the original audio.
+        #
+        # Crucially we do NOT feed the readiness chime. It's the first sound of a
+        # session, so it would hit a brand-new, un-converged echo canceller as its
+        # very first far-end reference; the canceller mis-adapts to that loud, pure
+        # tone (made worse by a stream-delay hint that may not match the device)
+        # and then over-suppresses the user's near-end speech for the next few
+        # seconds - swallowing the first sentence on a hardware speakerphone.
+        # Skipping it leaves the canceller neutral (no far-end -> no adaptation)
+        # until real TTS arrives, exactly matching a working echo_cancellation=off
+        # run for the chime window while keeping AEC for the conversation. The
+        # chime's own echo is kept out of the pipeline by the half-duplex gate
+        # (it's a ReadinessChimeFrame, which closes the gate), not by cancellation.
+        if not isinstance(frame, ReadinessChimeFrame):
+            self._apm.process_render(
+                frame.audio, self._sample_rate, self._params.audio_out_channels
+            )
         return await super().write_audio_frame(frame)
 
 

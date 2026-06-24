@@ -4,8 +4,11 @@ Mirrors the LiveKit client's chime (livekit-client/.../sound.py): a quick rising
 two-note "ding" with a bell-like exponential decay. Here we only *generate* the
 PCM; playback goes through Pipecat's output transport (as a
 ``ReadinessChimeFrame``) rather than a separate audio device, so it routes
-through the same speakers and the WebRTC APM uses it as an echo-cancellation
-reference.
+through the same speakers. Unlike bot speech, the chime is deliberately *not*
+fed to the WebRTC APM as an echo-cancellation reference: as a session's first
+sound it would mis-adapt the cold echo canceller and swallow the user's first
+sentence (see ``transport_local.py``). The half-duplex gate keeps its echo out
+of the capture path instead.
 """
 
 from __future__ import annotations
@@ -43,17 +46,22 @@ def chime_pcm() -> tuple[bytes, int]:
 
 @dataclass
 class ReadinessChimeFrame(OutputAudioRawFrame):
-    """The readiness chime, as its own output-frame type so the mic can gate it.
+    """The readiness chime, as its own output-frame type for special handling.
 
     It is a plain output frame (not a ``TTSAudioRawFrame``), so it still does not
-    count as bot speech - no idle-timer reset, no interruption logic. The only
-    reason it is a distinct subclass is so the local transport's half-duplex gate
-    (see ``transport_local.py``) can recognize it and drop the mic while it plays,
-    plus a short tail, keeping the chime's echo out of the capture path. On a
-    hardware speakerphone that echo otherwise poisons the freshly-started echo
-    canceller and swallows the user's first sentence. The soft "working" cue
-    (``working_sound.py``) stays a plain ``OutputAudioRawFrame`` and is therefore
-    deliberately *not* gated.
+    count as bot speech - no idle-timer reset, no interruption logic. It is a
+    distinct subclass so the local transport (see ``transport_local.py``) can give
+    it the two-layer treatment a session's first sound needs on a hardware
+    speakerphone, where the chime otherwise swallows the user's first sentence:
+
+    1. The half-duplex gate closes the mic while it plays (plus a short tail), so
+       the chime's echo never reaches VAD/STT in the pipeline.
+    2. It is *not* fed to the echo canceller as a far-end reference, so the cold,
+       freshly-built canceller can't mis-adapt to the loud tone and then
+       over-suppress the user's near-end speech for the next few seconds.
+
+    The soft "working" cue (``working_sound.py``) stays a plain
+    ``OutputAudioRawFrame`` and gets neither treatment.
     """
 
 
