@@ -1,13 +1,15 @@
 # openlily
 
-openlily is an open-source, local-first personal voice assistant. You talk to it
+openlily is an Alexa-like personal voice assistant. You talk to it
 through your own mic and speakers — voice in → LLM → voice out — and it can answer
 questions, explain things, and take actions through tools (web search, browser
-automation, email). It runs as a terminal voice CLI on your machine, with an
+automation, email, etc). It runs as a terminal voice CLI on your machine, with an
 optional wake word so it sits quietly until you call it.
 
 It's built to be **yours**: swap the underlying models (LLM, speech-to-text,
 text-to-speech), pick a provider you trust, and turn on only the tools you want.
+
+You can also run it on other standalone devices like raspberry pi, mac mini, etc.
 
 ## Demo
 
@@ -27,7 +29,7 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
   starts a session only when it hears the wake phrase. No cloud, no API key.
 - **On-device turn-taking** — Silero VAD + Smart Turn v3 run locally to decide
   when you've started and stopped talking.
-- **Tools** — web search, real browser automation, and email, each opt-in.
+- **Tools** — web search, real browser automation, and email, each opt-in. You can write custom tools easily.
 
 ## Setup
 
