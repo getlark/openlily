@@ -5,7 +5,10 @@ description = "Voice AI bot built with Pipecat"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    "pipecat-ai[cartesia,local,mcp,openai,runner,silero,webrtc]>=1.4.0",
+    # mlx-whisper is the STT used by the local brain (Apple Silicon), but
+    # pipecat's whisper module imports faster-whisper at top level, so the
+    # `whisper` extra is required too even though only the MLX subclass is used.
+    "pipecat-ai[cartesia,kokoro,local,mcp,mlx-whisper,openai,runner,silero,webrtc,whisper]>=1.4.0",
     # Standalone WebRTC Audio Processing Module (AEC + noise suppression + AGC)
     # for the local-audio CLI run. Only rtc.AudioProcessingModule is used; no
     # LiveKit room/server/credentials are involved.

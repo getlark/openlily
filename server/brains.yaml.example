@@ -4,7 +4,8 @@
 # A present-but-invalid file (bad YAML, unknown brain/field, wrong type, or a
 # missing default_brain) is a startup error.
 
-# Which brain to run: openai_standard | cartesia_openai | openai_realtime.
+# Which brain to run: openai_standard | cartesia_openai | openai_realtime |
+# local_whisper_ollama_kokoro.
 # Required: if this file exists it MUST set default_brain (else startup errors).
 default_brain: cartesia_openai
 
@@ -35,3 +36,17 @@ openai_realtime:
     model: gpt-4o-transcribe
   llm:
     model: gpt-realtime-2
+
+# Fully local cascade: MLX Whisper STT + Ollama LLM + Kokoro TTS. No API keys.
+# Needs a running `ollama serve` with the LLM pulled (`ollama pull gemma4:e4b`;
+# use gemma4:e2b for a lighter/faster model). Verify it's up before running:
+# `ollama ps` (or `curl http://localhost:11434/api/tags`). Point elsewhere with
+# $OLLAMA_BASE_URL. STT/TTS models download on first run. MLX Whisper requires
+# Apple Silicon.
+local_whisper_ollama_kokoro:
+  stt:
+    model: mlx-community/whisper-large-v3-turbo
+  llm:
+    model: gemma4:e4b
+  tts:
+    voice: af_heart

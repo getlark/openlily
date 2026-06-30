@@ -7,7 +7,12 @@ Select the active brain via ``default_brain`` in ``brains.yaml`` (copy
 
 from __future__ import annotations
 
-from . import cartesia_openai, openai_realtime, openai_standard
+from . import (
+    cartesia_openai,
+    local_whisper_ollama_kokoro,
+    openai_realtime,
+    openai_standard,
+)
 from .base import (
     BrainName,
     BrainServices,
@@ -24,6 +29,7 @@ BRAINS: dict[BrainName, BrainSpec] = {
     openai_standard.SPEC.name: openai_standard.SPEC,
     cartesia_openai.SPEC.name: cartesia_openai.SPEC,
     openai_realtime.SPEC.name: openai_realtime.SPEC,
+    local_whisper_ollama_kokoro.SPEC.name: local_whisper_ollama_kokoro.SPEC,
 }
 
 

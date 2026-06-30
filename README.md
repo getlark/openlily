@@ -93,6 +93,10 @@ You can also run it on other standalone devices like raspberry pi, mac mini, etc
      in and out, just no web search.
    - **OpenAI key only, with web search:** use `openai_standard` instead — it runs
      entirely on OpenAI (including built-in web search) with only `OPENAI_API_KEY`.
+   - **No API keys at all (fully local):** switch `default_brain` to
+     `local_whisper_ollama_kokoro` and run a local [Ollama](https://ollama.com/)
+     server. Everything (STT, LLM, TTS) runs on your machine — see
+     [Run it fully local](#run-it-fully-local-no-api-keys).
 
    Everything else in `.env` is optional and grouped by when you need it. See
    [Personalizing your assistant](#personalizing-your-assistant) for the full menu.
@@ -125,6 +129,7 @@ without the file the default is `cartesia_openai`):
 | `openai_standard` | OpenAI | OpenAI | OpenAI |
 | `cartesia_openai` (default) | Cartesia (ink-2) | OpenAI | Cartesia (sonic-3.5) |
 | `openai_realtime` | — | OpenAI Realtime (GPT speech-to-speech: STT + LLM + TTS in one) | — |
+| `local_whisper_ollama_kokoro` | MLX Whisper (local) | Ollama (local) | Kokoro (local) |
 
 Which to pick:
 
@@ -137,12 +142,48 @@ Which to pick:
 - **`openai_realtime`** — feels the fastest, since there's no separate STT/TTS
   stage, but the speech-to-speech model can be less capable than the latest
   non-realtime OpenAI models.
+- **`local_whisper_ollama_kokoro`** — fully on-device and free of API keys: MLX
+  Whisper for STT, [Ollama](https://ollama.com/) for the LLM, and Kokoro for TTS.
+  Best for privacy or offline use; quality and speed depend on your hardware, and
+  it has no web search. Requires Apple Silicon (MLX) and a running Ollama server —
+  see [Run it fully local](#run-it-fully-local-no-api-keys).
 
 In the same `brains.yaml` you can override each brain's model names and the TTS
 voice without touching code — e.g. point the LLM at a different model, or change
 the Cartesia voice ID. Want a provider that isn't listed (a different STT/TTS
 vendor, a local LLM)? Adding a brain is a small, self-contained change — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+#### Run it fully local (no API keys)
+
+The `local_whisper_ollama_kokoro` brain runs the whole pipeline on your machine,
+so no provider API keys are needed. It currently requires **Apple Silicon** (the
+STT uses MLX Whisper).
+
+1. **Install and start [Ollama](https://ollama.com/)**, then pull the LLM:
+
+   ```bash
+   ollama pull gemma4:e4b        # or gemma4:e2b for a lighter/faster model
+   ```
+
+   Make sure the server is running and reachable before you start the bot —
+   `ollama ps` (or `curl http://localhost:11434/api/tags`) should respond. If
+   Ollama runs somewhere other than the default `http://localhost:11434`, set
+   `OLLAMA_BASE_URL` (e.g. `http://my-host:11434/v1`).
+
+2. **Select the brain** in `brains.yaml`:
+
+   ```yaml
+   default_brain: local_whisper_ollama_kokoro
+   ```
+
+3. **Run it** (`uv run bot.py --mode local`). On the first run the STT (MLX
+   Whisper) and TTS (Kokoro) models download and cache locally, so startup is
+   slower once. If Kokoro errors on a missing phonemizer, install espeak-ng
+   (`brew install espeak-ng`).
+
+This brain has no web search (all the web/browser/email tools call external
+services). Everything else — voice in, LLM, voice out — works offline.
 
 ### 2. Turn tools on or off
 
@@ -156,7 +197,8 @@ fine without them.
   OpenAI cascade brains (`openai_standard`, `cartesia_openai`) use OpenAI's
   built-in hosted web search automatically — no extra key. The `openai_realtime`
   brain instead calls Exa, so it needs `EXA_API_KEY` (without it, the realtime
-  brain just runs without web search).
+  brain just runs without web search). The fully-local
+  `local_whisper_ollama_kokoro` brain has no web search at all.
 - **Browser** (Playwright MCP) — drives a real local browser. Needs Node.js/`npx`.
   Attaches to an already-running browser over CDP rather than launching its own,
   so set `BROWSER_CDP_ENDPOINT` (e.g. `http://localhost:9222`, from Chrome started
