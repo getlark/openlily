@@ -82,7 +82,7 @@ _WS_BLIPS = (
 )
 # Soft: kept well below the chime's 0.3 so the cue is gentle on echo
 # cancellation / barge-in detection.
-_WS_AMPLITUDE = 0.11
+_WS_AMPLITUDE = 0.4
 # Gentle (small) decay for a warm, sustained tone with a heavy tail, rather than
 # a sharp pluck.
 _WS_DECAY = 3.2
@@ -93,7 +93,9 @@ _WS_RELEASE_SECS = 0.04
 _WS_PARTIAL_GAIN = 0.18
 
 
-def _render_tone(samples: array.array, freq: float, duration: float, gain: float) -> None:
+def _render_tone(
+    samples: array.array, freq: float, duration: float, gain: float
+) -> None:
     """Append one soft, click-free tone (fundamental + faint 2nd harmonic)."""
     frame_count = int(SAMPLE_RATE * duration)
     attack = max(1, int(SAMPLE_RATE * _WS_ATTACK_SECS))
