@@ -273,10 +273,34 @@ def _build_worker(pipeline: Pipeline) -> PipelineWorker:
     return worker
 
 
+async def _warmup_brain(brain: BrainSpec) -> None:
+    """Eagerly download/load the brain's slow first-run models, once per process.
+
+    Brains that pull large models or talk to a local server (e.g. the local
+    Whisper/Ollama/Kokoro brain) expose a ``warmup`` that would otherwise run
+    lazily mid-conversation - the first utterance stalling on a model download,
+    or the first reply on an LLM cold start. Running it here moves that cost to
+    startup, where it's visible (and, in wake-gated mode, happens before the
+    wake word).
+
+    Fail-fast: ``warmup`` raises on a known-broken setup (e.g. the local model
+    server isn't running) with an actionable message, and that propagates to
+    abort startup so the user can fix it and relaunch - better than a confusing
+    failure once a session is underway.
+    """
+    if brain.warmup is None:
+        return
+    logger.info("Warming up models (first run may download; this can take a while)...")
+    await brain.warmup()
+    logger.info("Warmup complete")
+
+
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> None:
     """Run the voice bot for a dev-runner session (browser WebRTC UI)."""
     brain = get_brain()
     logger.info(f"Starting bot (brain={brain.name}, realtime={brain.is_realtime})")
+
+    await _warmup_brain(brain)
 
     pipeline, tool_bundle = await _build_pipeline(transport, brain)
     worker = _build_worker(pipeline)
@@ -348,6 +372,7 @@ async def run_session(*, handle_sigint: bool) -> None:
 
 async def run_local() -> None:
     """Run the bot over local mic/speakers - the terminal voice CLI."""
+    await _warmup_brain(get_brain())
     logger.info("Local voice bot ready - start talking. Press Ctrl+C to stop.")
     await run_session(handle_sigint=True)
 
@@ -378,6 +403,14 @@ def run_wake_gated() -> None:
     import asyncio
 
     from wakeword import PyAudioSource, WakeWordEngine, WakeWordListener
+
+    # Warm the brain's models up front (before we start listening) so the very
+    # first session doesn't stall on a model download / LLM cold start, and so
+    # the setup progress is visible before the user is told to say the wake
+    # word. Fail-fast: a known-broken setup (e.g. Ollama not running) aborts the
+    # process here with a clear message, rather than being swallowed by the
+    # per-session error handler in the wake loop below and looping forever.
+    asyncio.run(_warmup_brain(get_brain()))
 
     models = _wake_models()
     # Constructing the engine imports openwakeword/onnxruntime and loads the

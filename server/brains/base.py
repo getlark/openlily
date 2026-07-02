@@ -156,3 +156,11 @@ class BrainSpec:
     the LLM is built (the prompt depends on the bundle's ``instructions``), so it
     takes no ``llm``; tools that must register on the LLM do so via the bundle's
     ``registrations``. Only this brain's tools apply."""
+    warmup: Callable[[], Awaitable[None]] | None = None
+    """Optional: eagerly download/load this brain's slow first-run resources
+    once at process startup, so nothing downloads or cold-starts mid-session
+    (and, in wake-gated mode, progress is visible before the wake word). Called
+    by ``bot.py`` before any session. Fail-fast: raise a clear, actionable error
+    on a known-broken setup (e.g. a required local server not running) rather
+    than deferring to a confusing mid-conversation failure. Brains without slow
+    startup work leave it ``None``."""

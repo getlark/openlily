@@ -177,10 +177,14 @@ STT uses MLX Whisper).
    default_brain: local_whisper_ollama_kokoro
    ```
 
-3. **Run it** (`uv run bot.py --mode local`). On the first run the STT (MLX
-   Whisper) and TTS (Kokoro) models download and cache locally, so startup is
-   slower once. If Kokoro errors on a missing phonemizer, install espeak-ng
-   (`brew install espeak-ng`).
+3. **Run it** (`uv run bot.py --mode local`). At startup the brain warms up —
+   it downloads/loads the STT (MLX Whisper) and TTS (Kokoro) models and preloads
+   the Ollama model — so the first conversation isn't slowed by downloads or a
+   cold start. In wake-word mode this happens before you're prompted to say the
+   wake word. The first run is slower while models download and cache locally.
+   If Ollama isn't running or the model isn't pulled, startup stops with a
+   message telling you what to fix, so just correct it and relaunch. If Kokoro
+   errors on a missing phonemizer, install espeak-ng (`brew install espeak-ng`).
 
 This brain has no web search (all the web/browser/email tools call external
 services). Everything else — voice in, LLM, voice out — works offline.
