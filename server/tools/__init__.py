@@ -19,11 +19,13 @@ from brains.base import ToolBundle, merge_tool_bundles
 
 from .browser import setup_browser_tools
 from .email import setup_email_tools
+from .session import setup_session_tools
 
 # The generic tools wired onto every brain. Each entry is a ``setup_*`` coroutine
 # function returning a ``ToolBundle``. Edit this list to change which tools are
 # included -- comment out or remove an entry to drop a tool, append one to add it.
 GENERIC_TOOL_SETUPS: list[Callable[[], Awaitable[ToolBundle]]] = [
+    setup_session_tools,
     # Note: include this if you want the agent to be able to use your local browser
     # setup_browser_tools,
     # Note: include this if you want the agent to be able to send emails

@@ -12,10 +12,12 @@ Everything runs on-device, with no external API and no API keys:
 - TTS: ``KokoroTTSService``, default voice ``af_heart``. The model/voices file
   is downloaded and cached on first use.
 
-No tools are attached (``setup_tools=None``): the existing web/browser/email
-tools all reach out to cloud services, which would break the "fully local"
-contract. Model names and the TTS voice can still be overridden per the usual
-``brains.yaml`` mechanism (see ``brains/overrides.py``).
+Per-brain tools are omitted (``setup_tools=None``): web/browser/email reach out
+to cloud services, which would break the "fully local" contract. The generic
+``end_session`` tool (see ``tools/session/``) is still wired in via
+``setup_generic_tools`` -- it only ends the local session. Model names and the
+TTS voice can still be overridden per the usual ``brains.yaml`` mechanism (see
+``brains/overrides.py``).
 """
 
 from __future__ import annotations
