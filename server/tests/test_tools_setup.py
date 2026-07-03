@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import pytest
 
+import tools as tools_pkg
 import tools.email as email_pkg
 import tools.web as web_pkg
+from brains.base import ToolBundle, ToolName
+from tools import setup_generic_tools
 from tools.email import setup_email_tools
 from tools.email.config import USER_EMAIL_ENV
 from tools.email.resend_provider import ResendProvider
@@ -77,3 +80,54 @@ async def test_email_unknown_provider_raises(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(email_pkg, "EMAIL_PROVIDER", "nope")
     with pytest.raises(ValueError):
         await setup_email_tools()
+
+
+async def test_generic_tools_always_includes_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No optional tools enabled -> the always-on session tool is still wired in.
+    monkeypatch.setattr(tools_pkg, "get_enabled_tools", lambda: [])
+    bundle = await setup_generic_tools()
+    assert bundle.standard_tools  # session's end_session tool
+    assert bundle.instructions
+
+
+async def test_generic_tools_enabled_and_configured_wires(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_setup() -> ToolBundle:
+        return ToolBundle(standard_tools=[_noop], instructions=["X capability"])
+
+    monkeypatch.setattr(tools_pkg, "get_enabled_tools", lambda: [ToolName.X])
+    monkeypatch.setitem(
+        tools_pkg._OPTIONAL_TOOLS,
+        ToolName.X,
+        tools_pkg._OptionalTool(
+            setup=fake_setup,
+            is_configured=lambda: True,
+            requirement="X_APP_BEARER_TOKEN",
+        ),
+    )
+
+    bundle = await setup_generic_tools()
+
+    assert _noop in bundle.standard_tools  # the enabled tool's tool
+    assert "X capability" in bundle.instructions
+
+
+async def test_generic_tools_enabled_but_unconfigured_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_setup() -> ToolBundle:  # must never run when unconfigured
+        raise AssertionError("setup should not be called for an unconfigured tool")
+
+    monkeypatch.setattr(tools_pkg, "get_enabled_tools", lambda: [ToolName.X])
+    monkeypatch.setitem(
+        tools_pkg._OPTIONAL_TOOLS,
+        ToolName.X,
+        tools_pkg._OptionalTool(
+            setup=fail_setup,
+            is_configured=lambda: False,
+            requirement="X_APP_BEARER_TOKEN",
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        await setup_generic_tools()
+    assert "X_APP_BEARER_TOKEN" in str(exc.value)

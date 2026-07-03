@@ -210,11 +210,12 @@ services). Everything else — voice in, LLM, voice out — works offline.
 
 ### 2. Turn tools on or off
 
-Tools are opt-in. The browser and email tools are wired in centrally and are
-**off by default** — enable them by uncommenting their entry in
-`GENERIC_TOOL_SETUPS` in [server/tools/\_\_init\_\_.py](server/tools/__init__.py).
-Each tool only activates if its credentials are present, and a session still runs
-fine without them.
+Tools are opt-in. The optional generic tools (`browser`, `email`, `x`) are
+**off by default** — enable them by name in the `tools` list in `brains.yaml`
+(copy [server/brains.yaml.example](server/brains.yaml.example)). The end-session
+tool is always on. Each enabled tool needs its credentials in `.env`; enabling one
+without them is a startup error (so a typo or missing key fails loudly instead of
+silently running without the tool).
 
 - **Web search** — on by default, and how you get it depends on the brain. The
   OpenAI cascade brains (`openai_standard`, `cartesia_openai`) use OpenAI's

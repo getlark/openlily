@@ -52,6 +52,16 @@ def _provider_cls() -> type[EmailProvider]:
         )
 
 
+def email_is_configured() -> bool:
+    """Whether the email tool is fully configured: a recipient *and* the
+    selected provider's credentials are present.
+
+    Used to fail fast when the tool is enabled in ``brains.yaml`` but something
+    it needs (``USER_EMAIL`` or the provider's key/sender) is missing.
+    """
+    return get_user_email() is not None and _provider_cls().is_configured()
+
+
 async def setup_email_tools() -> ToolBundle:
     """Build the email tool from the selected provider, if it's configured.
 
@@ -80,4 +90,4 @@ async def setup_email_tools() -> ToolBundle:
     )
 
 
-__all__ = ["EMAIL_INSTRUCTION", "setup_email_tools"]
+__all__ = ["EMAIL_INSTRUCTION", "email_is_configured", "setup_email_tools"]

@@ -23,12 +23,13 @@ from .base import (
     BrainServices,
     BrainSpec,
     ToolBundle,
+    ToolName,
     close_tool_bundle,
     merge_tool_bundles,
     register_tool_bundle,
     tools_schema_from_bundle,
 )
-from .config import get_brain_name
+from .config import get_brain_name, get_enabled_tools
 
 
 def _load_local_whisper_ollama_kokoro() -> BrainSpec:
@@ -76,8 +77,10 @@ __all__ = [
     "BrainServices",
     "BrainSpec",
     "ToolBundle",
+    "ToolName",
     "close_tool_bundle",
     "get_brain",
+    "get_enabled_tools",
     "merge_tool_bundles",
     "register_tool_bundle",
     "tools_schema_from_bundle",

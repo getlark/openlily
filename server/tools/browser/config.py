@@ -26,6 +26,17 @@ BROWSER_MCP_BASE_ARGS = ["-y", "@playwright/mcp@latest"]
 BROWSER_CDP_ENDPOINT_ENV = "BROWSER_CDP_ENDPOINT"
 
 
+def is_configured() -> bool:
+    """Whether the browser tool's config is present (``BROWSER_CDP_ENDPOINT`` set).
+
+    Used to fail fast when the tool is enabled in ``brains.yaml`` but no CDP
+    endpoint is configured, before the (slower) MCP server is spawned. Read at
+    call time (not import) because this module loads before ``load_dotenv()``.
+    """
+    endpoint = os.getenv(BROWSER_CDP_ENDPOINT_ENV)
+    return bool(endpoint and endpoint.strip())
+
+
 def build_browser_mcp_args() -> list[str]:
     """Build the Playwright MCP launch args, read fresh from the environment.
 

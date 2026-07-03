@@ -37,6 +37,15 @@ def get_x_bearer_token() -> str | None:
     return token.strip() if token and token.strip() else None
 
 
+def is_configured() -> bool:
+    """Whether the X tool's credential is present (``X_APP_BEARER_TOKEN`` set).
+
+    Used to fail fast when the tool is enabled in ``brains.yaml`` but its token
+    is missing, before the (slower) MCP connection is attempted.
+    """
+    return get_x_bearer_token() is not None
+
+
 def build_x_mcp_headers(token: str) -> dict[str, str]:
     """Build the auth headers for the app-only Bearer connection to X's MCP."""
     return {"Authorization": f"Bearer {token}"}

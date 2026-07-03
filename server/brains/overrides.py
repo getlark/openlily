@@ -20,7 +20,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from .base import BrainName
+from .base import BrainName, ToolName
 
 # server/brains/overrides.py -> server/brains.yaml (one dir up from this package).
 _OVERRIDE_PATH = Path(__file__).resolve().parents[1] / "brains.yaml"
@@ -64,6 +64,13 @@ class BrainOverrides(BaseModel):
     # Optional at the model level so the no-file path can construct an empty
     # ``BrainOverrides()``; presence is enforced in the loader when a file exists.
     default_brain: BrainName | None = None
+
+    # Optional generic tools to enable, by name (see ``ToolName``). The always-on
+    # session tool is not listed. Omitted/empty -> no optional tools, matching
+    # the previous "everything commented out" default. Unknown names fail
+    # validation (``list[ToolName]``), like any other invalid setting.
+    tools: list[ToolName] = Field(default_factory=list)
+
     openai_standard: _Cascade = Field(default_factory=_Cascade)
     cartesia_openai: _Cascade = Field(default_factory=_Cascade)
     openai_realtime: _Realtime = Field(default_factory=_Realtime)

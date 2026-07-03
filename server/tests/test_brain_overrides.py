@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from brains.base import BrainName
+from brains.base import BrainName, ToolName
 from brains.overrides import BrainOverrides, get_brain_overrides
 
 
@@ -21,6 +21,8 @@ def test_no_file_returns_empty_defaults(no_brains_yaml: Path) -> None:
     assert overrides.default_brain is None
     assert overrides.cartesia_openai.tts.voice is None
     assert overrides.cartesia_openai.llm.model is None
+    # No 'tools' key -> no optional tools enabled.
+    assert overrides.tools == []
 
 
 def test_valid_file_parses_overrides(brains_yaml: Callable[[str], Path]) -> None:
@@ -45,6 +47,39 @@ def test_valid_file_parses_overrides(brains_yaml: Callable[[str], Path]) -> None
     assert overrides.cartesia_openai.llm.model == "gpt-5.4-mini"
     assert overrides.cartesia_openai.tts.model == "sonic-3.5"
     assert overrides.cartesia_openai.tts.voice == "my-custom-voice-id"
+
+
+def test_tools_list_parses(brains_yaml: Callable[[str], Path]) -> None:
+    brains_yaml(
+        """
+        default_brain: cartesia_openai
+        tools:
+          - x
+          - browser
+        """
+    )
+
+    overrides = get_brain_overrides()
+
+    assert overrides.tools == [ToolName.X, ToolName.BROWSER]
+
+
+def test_tools_absent_defaults_empty(brains_yaml: Callable[[str], Path]) -> None:
+    brains_yaml("default_brain: cartesia_openai\n")
+    assert get_brain_overrides().tools == []
+
+
+def test_unknown_tool_name_raises(brains_yaml: Callable[[str], Path]) -> None:
+    brains_yaml(
+        """
+        default_brain: cartesia_openai
+        tools:
+          - not_a_real_tool
+        """
+    )
+    with pytest.raises(RuntimeError) as exc:
+        get_brain_overrides()
+    assert "invalid settings" in str(exc.value)
 
 
 def test_present_file_missing_default_brain_raises(brains_yaml: Callable[[str], Path]) -> None:

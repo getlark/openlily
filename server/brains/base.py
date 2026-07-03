@@ -43,6 +43,23 @@ class BrainName(StrEnum):
     LOCAL_WHISPER_OLLAMA_KOKORO = "local_whisper_ollama_kokoro"
 
 
+class ToolName(StrEnum):
+    """Canonical names of the *optional* generic tools -- the single source of
+    truth for what ``brains.yaml``'s ``tools`` list may contain.
+
+    These are the brain-agnostic tools enabled per config (see
+    ``tools/__init__.py``). The always-on session tool is intentionally absent:
+    it's never optional, so it can't be named -- and thus can't be disabled --
+    here. Lives in ``brains.base`` (not ``tools``) so ``brains.overrides`` can
+    validate against it without importing ``tools`` (which would be circular:
+    ``tools`` imports from ``brains.base``).
+    """
+
+    BROWSER = "browser"
+    EMAIL = "email"
+    X = "x"
+
+
 @dataclass
 class BrainServices:
     """The service objects a brain contributes to the pipeline.

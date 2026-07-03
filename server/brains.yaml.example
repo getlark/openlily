@@ -9,6 +9,20 @@
 # Required: if this file exists it MUST set default_brain (else startup errors).
 default_brain: cartesia_openai
 
+# Optional generic tools to enable, by name. Available: browser, email, x. 
+$ Omit the key (or use an empty list) to run with no optional tools.
+# Each enabled tool needs its credentials in .env (see .env.example) -- 
+# enabling one without them is a
+# startup error, not a silent skip.
+#   browser -> BROWSER_CDP_ENDPOINT
+#   email   -> USER_EMAIL + the email provider's credentials
+#   x       -> X_APP_BEARER_TOKEN
+tools: []
+# tools:
+#   - x
+#   - browser
+#   - email
+
 # OpenAI STT + LLM + TTS cascade.
 openai_standard:
   stt:

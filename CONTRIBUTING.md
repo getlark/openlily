@@ -99,8 +99,10 @@ Tools come in two flavors (see [server/tools/\_\_init\_\_.py](server/tools/__ini
 - **Per-brain tools** (e.g. `tools/web/`): a brain selects and owns these in its
   `setup_tools`; they can be provider-specific (e.g. OpenAI's hosted `web_search`).
 - **Generic tools** (e.g. `tools/browser/`, `tools/email/`): brain-agnostic, layered
-  onto every brain centrally. They're listed in `GENERIC_TOOL_SETUPS` and are
-  **commented out by default** — uncomment to enable.
+  onto every brain centrally. The `session` tool is always on; the optional ones
+  (`browser`, `email`, `x`) are enabled by name via the `tools` list in
+  `brains.yaml`. Enabling one whose credentials are missing is a fail-fast startup
+  error, not a silent skip.
 
 A tool provider implements the `ToolProvider` contract in
 [server/tools/base.py](server/tools/base.py): `is_configured()` reports whether its
@@ -111,10 +113,12 @@ whose name, typed signature, and docstring become the LLM tool schema.
 To **add a generic tool**:
 
 1. Create `server/tools/<name>/` with a provider implementing `ToolProvider` and a
-   `setup_<name>_tools() -> ToolBundle` factory. [server/tools/email/](server/tools/email/)
-   is a good multi-provider example.
-2. Add its `setup_*` coroutine to `GENERIC_TOOL_SETUPS` in
-   [server/tools/\_\_init\_\_.py](server/tools/__init__.py).
+   `setup_<name>_tools() -> ToolBundle` factory, plus a config-presence check.
+   [server/tools/email/](server/tools/email/) is a good multi-provider example.
+2. Add a `ToolName` member in [server/brains/base.py](server/brains/base.py) and
+   register the tool's `setup_*` coroutine and its `is_configured` check in
+   `_OPTIONAL_TOOLS` in [server/tools/\_\_init\_\_.py](server/tools/__init__.py).
+   Users then enable it by adding its name to `tools` in `brains.yaml`.
 
 A `ToolBundle` ([server/brains/base.py](server/brains/base.py)) carries the tools plus
 optional prompt snippets (`instructions`), LLM-dependent `registrations` (e.g. MCP),
