@@ -27,8 +27,9 @@ from pipecat.services.llm_service import LLMService
 class BrainName(StrEnum):
     """Canonical names of the selectable brains -- the single source of truth.
 
-    Used everywhere a brain is named (each ``SPEC.name``, the ``BRAINS`` registry
-    keys, the ``default_brain`` override, and ``DEFAULT_BRAIN``). ``StrEnum``
+    Used everywhere a brain is named (each ``SPEC.name``, the brain-loader
+    registry keys in ``brains/__init__.py``, the ``default_brain`` override, and
+    ``DEFAULT_BRAIN``). ``StrEnum``
     members are real strings, so they stay drop-in for logging, dict keys, and
     matching YAML/env values, while giving the type checker and pydantic one
     definition to enforce. Add a brain by adding a member here, registering its

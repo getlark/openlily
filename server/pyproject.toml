@@ -5,10 +5,13 @@ description = "Voice AI bot built with Pipecat"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    # mlx-whisper is the STT used by the local brain (Apple Silicon), but
-    # pipecat's whisper module imports faster-whisper at top level, so the
-    # `whisper` extra is required too even though only the MLX subclass is used.
-    "pipecat-ai[cartesia,kokoro,local,mcp,mlx-whisper,openai,runner,silero,webrtc,whisper]>=1.4.0",
+    # Cloud brains + the local-audio mic CLI and wake-word mode. Deliberately
+    # omits the local-*model* runtimes (mlx-whisper/whisper/kokoro) — those live
+    # in the `local-models` extra below so a cloud-only install stays lean and
+    # never pulls torch/CUDA. `local` here is pipecat's *local-audio* extra
+    # (PyAudio for the mic transport), which the default run mode needs even with
+    # a cloud brain — unrelated to local models.
+    "pipecat-ai[cartesia,local,mcp,openai,runner,silero,webrtc]>=1.4.0",
     # Standalone WebRTC Audio Processing Module (AEC + noise suppression + AGC)
     # for the local-audio CLI run. Only rtc.AudioProcessingModule is used; no
     # LiveKit room/server/credentials are involved.
@@ -23,6 +26,19 @@ dependencies = [
     "resend>=2.30.1",
     # Parse the optional brains.yaml model/voice overrides (brains/overrides.py).
     "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+# On-device model runtimes for the `local_whisper_ollama_kokoro` brain. Kept out
+# of the base install because these are heavy: `mlx-whisper` drags in torch (and,
+# on Linux, the whole nvidia-* CUDA stack), `whisper` adds faster-whisper, and
+# `kokoro` adds the Kokoro ONNX TTS. Users who only run cloud brains never need
+# them; install with `uv sync --extra local-models` (or `pip install '.[local-models]'`).
+# NB: pipecat's whisper module imports faster-whisper at top level, so the
+# `whisper` extra is required alongside `mlx-whisper` even though the local brain
+# only uses the MLX subclass.
+local-models = [
+    "pipecat-ai[kokoro,mlx-whisper,whisper]>=1.4.0",
 ]
 
 [dependency-groups]

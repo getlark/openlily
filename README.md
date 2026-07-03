@@ -145,7 +145,8 @@ Which to pick:
 - **`local_whisper_ollama_kokoro`** — fully on-device and free of API keys: MLX
   Whisper for STT, [Ollama](https://ollama.com/) for the LLM, and Kokoro for TTS.
   Best for privacy or offline use; quality and speed depend on your hardware, and
-  it has no web search. Requires Apple Silicon (MLX) and a running Ollama server —
+  it has no web search. Requires Apple Silicon (MLX), a running Ollama server, and
+  the optional `local-models` dependency extra (`uv sync --extra local-models`) —
   see [Run it fully local](#run-it-fully-local-no-api-keys).
 
 In the same `brains.yaml` you can override each brain's model names and the TTS
@@ -160,7 +161,25 @@ The `local_whisper_ollama_kokoro` brain runs the whole pipeline on your machine,
 so no provider API keys are needed. It currently requires **Apple Silicon** (the
 STT uses MLX Whisper).
 
-1. **Install and start [Ollama](https://ollama.com/)**, then pull the LLM:
+> **The on-device model runtimes are an optional extra.** They're heavy —
+> `mlx-whisper` pulls in torch (and, on Linux, the whole `nvidia-*` CUDA stack)
+> — so they're **not** installed by default. If you only use cloud brains you
+> never download them. To use this brain, install the `local-models` extra:
+>
+> ```bash
+> uv sync --extra local-models        # or: pip install '.[local-models]'
+> ```
+>
+> Selecting this brain without the extra fails fast with a message telling you to
+> run the command above.
+
+1. **Install the local-model dependencies** (see the note above):
+
+   ```bash
+   uv sync --extra local-models
+   ```
+
+2. **Install and start [Ollama](https://ollama.com/)**, then pull the LLM:
 
    ```bash
    ollama pull gemma4:e4b        # or gemma4:e2b for a lighter/faster model
@@ -171,13 +190,13 @@ STT uses MLX Whisper).
    Ollama runs somewhere other than the default `http://localhost:11434`, set
    `OLLAMA_BASE_URL` (e.g. `http://my-host:11434/v1`).
 
-2. **Select the brain** in `brains.yaml`:
+3. **Select the brain** in `brains.yaml`:
 
    ```yaml
    default_brain: local_whisper_ollama_kokoro
    ```
 
-3. **Run it** (`uv run bot.py --mode local`). At startup the brain warms up —
+4. **Run it** (`uv run bot.py --mode local`). At startup the brain warms up —
    it downloads/loads the STT (MLX Whisper) and TTS (Kokoro) models and preloads
    the Ollama model — so the first conversation isn't slowed by downloads or a
    cold start. In wake-word mode this happens before you're prompted to say the

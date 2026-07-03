@@ -2276,9 +2276,14 @@ dependencies = [
     { name = "livekit" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
-    { name = "pipecat-ai", extra = ["kokoro", "local", "mcp", "mlx-whisper", "runner", "webrtc", "whisper"] },
+    { name = "pipecat-ai", extra = ["local", "mcp", "runner", "webrtc"] },
     { name = "pyyaml" },
     { name = "resend" },
+]
+
+[package.optional-dependencies]
+local-models = [
+    { name = "pipecat-ai", extra = ["kokoro", "mlx-whisper", "whisper"] },
 ]
 
 [package.dev-dependencies]
@@ -2295,10 +2300,12 @@ requires-dist = [
     { name = "livekit", specifier = ">=1.0" },
     { name = "onnxruntime" },
     { name = "openwakeword", specifier = "~=0.6" },
-    { name = "pipecat-ai", extras = ["cartesia", "kokoro", "local", "mcp", "mlx-whisper", "openai", "runner", "silero", "webrtc", "whisper"], specifier = ">=1.4.0" },
+    { name = "pipecat-ai", extras = ["cartesia", "local", "mcp", "openai", "runner", "silero", "webrtc"], specifier = ">=1.4.0" },
+    { name = "pipecat-ai", extras = ["kokoro", "mlx-whisper", "whisper"], marker = "extra == 'local-models'", specifier = ">=1.4.0" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "resend", specifier = ">=2.30.1" },
 ]
+provides-extras = ["local-models"]
 
 [package.metadata.requires-dev]
 dev = [
