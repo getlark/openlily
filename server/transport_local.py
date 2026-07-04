@@ -23,11 +23,12 @@ On a single device the bot would otherwise hear its own voice from the speakers
 Both are mandatory: ``livekit`` is a declared dependency and the transport fails
 loudly (rather than degrading quality) if it is missing.
 
-On top of the gate, **wake-word barge-in** (``WAKE_WORD_BARGE_IN``, on by
-default) restores the ability to interrupt: while the bot speaks, the gated (but
-AEC-cleaned) mic audio is tapped into an openWakeWord detector via the
-``_on_gated_audio`` hook, and a wake word ("alexa", or ``$WAKE_MODELS``) pushes a
-pipeline interruption that stops the bot. Set it False for pure half-duplex.
+On top of the gate, **wake-word barge-in** (off by default; enable at runtime
+with ``WAKE_WORD_BARGE_IN=true``) restores the ability to interrupt: while the
+bot speaks, the gated (but AEC-cleaned) mic audio is tapped into an openWakeWord
+detector via the ``_on_gated_audio`` hook, and a wake word ("alexa", or
+``$WAKE_MODELS``) pushes a pipeline interruption that stops the bot. Leave it
+unset/False for pure half-duplex.
 """
 
 from __future__ import annotations
@@ -52,6 +53,7 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 
+from env import env_flag
 from sound import ReadinessChimeFrame
 
 # The bot's mic capture rate. 16 kHz is what OpenAI STT expects and is plenty
@@ -67,10 +69,13 @@ LOCAL_AUDIO_OUT_SAMPLE_RATE = 24000
 GATE_TAIL_SECS = 0.3
 # AEC far/near delay hint (ms) handed to the APM's set_stream_delay_ms.
 APM_STREAM_DELAY_MS = 100
-# Wake-word barge-in: while the bot speaks (mic gated), a wake word ("alexa", or
-# $WAKE_MODELS) can still interrupt it. Set False for pure half-duplex - the bot
-# can't be interrupted mid-utterance and openWakeWord is never even imported.
-WAKE_WORD_BARGE_IN = False
+# Wake-word barge-in: off by default (pure half-duplex - the bot can't be
+# interrupted mid-utterance and openWakeWord is never even imported). Set the
+# $WAKE_WORD_BARGE_IN env var to "true" to enable it: while the bot speaks (mic
+# gated), a wake word ("alexa", or $WAKE_MODELS) can then still interrupt it.
+def _wake_word_barge_in() -> bool:
+    """Resolve wake-word barge-in from $WAKE_WORD_BARGE_IN (off unless "true")."""
+    return env_flag("WAKE_WORD_BARGE_IN")
 # On a barge-in, force the mic gate open for this long, ignoring bot audio. This
 # has to outlast the trailing TTS flush that the interruption drains (each
 # flushed frame would otherwise call mark_speaking and re-close the gate),
@@ -449,11 +454,12 @@ def build_local_transport() -> LocalAudioTransport:
 
     apm = _APM(stream_delay_ms=APM_STREAM_DELAY_MS)  # raises loudly if livekit missing
     gate = _SpeakerGate()
+    barge_in = _wake_word_barge_in()
     logger.info(
         "Local audio: half-duplex gating + WebRTC APM (AEC + noise suppression + AGC)"
-        + ("; wake-word barge-in enabled" if WAKE_WORD_BARGE_IN else "")
+        + ("; wake-word barge-in enabled" if barge_in else "")
     )
-    return GatedLocalAudioTransport(params, gate, apm, barge_in=WAKE_WORD_BARGE_IN)
+    return GatedLocalAudioTransport(params, gate, apm, barge_in=barge_in)
 
 
 def close_local_transport(transport: LocalAudioTransport) -> None:

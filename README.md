@@ -252,8 +252,10 @@ at your own `.onnx`/`.tflite` model file by path.
 
 In the local voice CLI the mic is half-duplex gated while the bot is talking, so
 it can't be interrupted mid-utterance. Wake-word barge-in (say the wake word to
-cut the bot off) is **disabled by default**; if you want to try it, flip
-`WAKE_WORD_BARGE_IN` to `True` in [server/transport_local.py](server/transport_local.py).
+cut the bot off) is **disabled by default**; to try it, set
+`WAKE_WORD_BARGE_IN=true` in `.env`. (The gate exists because on one device the
+mic hears the bot's own voice; on headphones there's no such echo, so this is a
+safe thing to turn on.)
 
 ## Run modes
 

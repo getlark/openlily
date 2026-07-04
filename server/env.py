@@ -9,6 +9,16 @@ from __future__ import annotations
 import os
 
 
+def env_flag(name: str) -> bool:
+    """Return True iff the env var is set to ``true`` (case-insensitive).
+
+    Anything else - unset, blank, or any other value - is False. Opt-in flags
+    only need a single way to turn on, so we don't bother parsing other
+    truthy/falsy spellings.
+    """
+    return os.getenv(name, "").strip().lower() == "true"
+
+
 def require_env(name: str, msg: str | None = None) -> str:
     """Return a required env var's value, or raise if it's missing/blank.
 
