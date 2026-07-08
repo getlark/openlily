@@ -28,6 +28,8 @@ from brains.config import get_enabled_tools
 from .browser import setup_browser_tools
 from .browser.config import is_configured as browser_is_configured
 from .email import email_is_configured, setup_email_tools
+from .notion import setup_notion_tools
+from .notion.config import is_configured as notion_is_configured
 from .session import setup_session_tools
 from .x import setup_x_tools
 from .x.config import is_configured as x_is_configured
@@ -68,6 +70,11 @@ _OPTIONAL_TOOLS: dict[ToolName, _OptionalTool] = {
         setup=setup_email_tools,
         is_configured=email_is_configured,
         requirement="USER_EMAIL and the email provider's credentials",
+    ),
+    ToolName.NOTION: _OptionalTool(
+        setup=setup_notion_tools,
+        is_configured=notion_is_configured,
+        requirement="NOTION_ACCESS_TOKEN",
     ),
     ToolName.X: _OptionalTool(
         setup=setup_x_tools,

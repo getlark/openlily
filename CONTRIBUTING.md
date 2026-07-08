@@ -11,7 +11,7 @@ Everything lives under `server/`.
 cd server
 uv sync                 # installs runtime + dev dependencies
 brew install portaudio  # macOS: required by PyAudio for local audio
-brew install node       # macOS: only if you'll use the browser tool (needs npx)
+brew install node       # macOS: only if you'll use the browser or notion tool (needs npx)
 cp .env.example .env     # then fill in the keys you need
 ```
 
@@ -100,7 +100,7 @@ Tools come in two flavors (see [server/tools/\_\_init\_\_.py](server/tools/__ini
   `setup_tools`; they can be provider-specific (e.g. OpenAI's hosted `web_search`).
 - **Generic tools** (e.g. `tools/browser/`, `tools/email/`): brain-agnostic, layered
   onto every brain centrally. The `session` tool is always on; the optional ones
-  (`browser`, `email`, `x`) are enabled by name via the `tools` list in
+  (`browser`, `email`, `notion`, `x`) are enabled by name via the `tools` list in
   `brains.yaml`. Enabling one whose credentials are missing is a fail-fast startup
   error, not a silent skip.
 

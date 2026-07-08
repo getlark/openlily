@@ -57,6 +57,7 @@ class ToolName(StrEnum):
 
     BROWSER = "browser"
     EMAIL = "email"
+    NOTION = "notion"
     X = "x"
 
 
