@@ -227,4 +227,7 @@ __marimo__/
 # Playwright MCP session output (console logs + page snapshots) written to cwd
 .playwright-mcp/
 
+# Local debug scratch (e.g. TOOL_CALL_DEBUG_DIR tool-call dumps)
+server/temp_debug/*
+
 # Node.js (client/)
