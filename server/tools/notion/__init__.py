@@ -23,7 +23,7 @@ from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
-from ..mcp_bundle import mcp_tool_bundle
+from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     NOTION_ACCESS_TOKEN_ENV,
     NOTION_MCP_ARGS,
@@ -36,7 +36,7 @@ from .config import (
 # Prompt snippet describing the Notion capability. Attached to the bundle so the
 # system prompt mentions Notion only when the tools are actually wired in.
 NOTION_INSTRUCTION = """
-You can access the user's Notion workspace to search for pages and databases, read page content, query database rows, and create or update pages when asked. Use search before guessing page or database IDs. Prefer reading page content via markdown retrieval rather than walking individual blocks. Summarize Notion results in plain spoken language: do not read raw UUIDs, markdown syntax, or long lists aloud. When the user asks to change or delete content and their intent is ambiguous, confirm before making destructive edits.
+You can access the user's Notion workspace to search for pages and databases, read page content, query database rows, and create or update pages when asked. Your Notion tools are the ones whose descriptions begin with the [Notion] tag; use them only to act on the user's Notion workspace, even though some are named generically (e.g. a "Search by title" tool). Use search before guessing page or database IDs. Prefer reading page content via markdown retrieval rather than walking individual blocks. Summarize Notion results in plain spoken language: do not read raw UUIDs, markdown syntax, or long lists aloud. When the user asks to change or delete content and their intent is ambiguous, confirm before making destructive edits.
 """
 
 
@@ -59,7 +59,7 @@ async def _connect_notion_mcp() -> tuple[MCPClient, ToolsSchema]:
         tools_filter=tools_filter,
     )
     await mcp.start()
-    tools = await mcp.get_tools_schema()
+    tools = prefix_tool_descriptions(await mcp.get_tools_schema(), "Notion")
     return mcp, tools
 
 

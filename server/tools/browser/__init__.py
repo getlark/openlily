@@ -30,7 +30,7 @@ from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
-from ..mcp_bundle import mcp_tool_bundle
+from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     BROWSER_CDP_ENDPOINT_ENV,
     BROWSER_MCP_COMMAND,
@@ -41,7 +41,7 @@ from .config import (
 # the system prompt mentions the browser only when the tools are actually wired
 # in (e.g. it's omitted when the MCP server fails to start).
 BROWSER_INSTRUCTION = """
-You can control a web browser to navigate to sites, read page contents, and take actions on a page (clicking, typing, filling forms). It's slower than web search, so reach for it when search and fetch fall short: when you need something precise, live details from a specific page, or when a task requires interacting with a site rather than just reading it. When using browser tool try to perform the complete the task the user gave you --  it might require multiple steps to complete the task. For example, if the users asks to search for something, it's beter to find the relevant page and opoen that that shows relevant information rather than just doing an initial google search and asking the user to navigate to the page.
+You can control a web browser to navigate to sites, read page contents, and take actions on a page (clicking, typing, filling forms). Your browser tools are the ones whose descriptions begin with the [Browser] tag; reach for them only when you actually need to drive a real browser. It's slower than web search, so reach for it when search and fetch fall short: when you need something precise, live details from a specific page, or when a task requires interacting with a site rather than just reading it. When using browser tool try to perform the complete the task the user gave you --  it might require multiple steps to complete the task. For example, if the users asks to search for something, it's beter to find the relevant page and opoen that that shows relevant information rather than just doing an initial google search and asking the user to navigate to the page.
 """
 
 
@@ -58,7 +58,7 @@ async def _connect_browser_mcp() -> tuple[MCPClient, ToolsSchema]:
         server_params=StdioServerParameters(command=BROWSER_MCP_COMMAND, args=args),
     )
     await mcp.start()
-    tools = await mcp.get_tools_schema()
+    tools = prefix_tool_descriptions(await mcp.get_tools_schema(), "Browser")
     return mcp, tools
 
 

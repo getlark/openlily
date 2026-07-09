@@ -24,7 +24,7 @@ from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
-from ..mcp_bundle import mcp_tool_bundle
+from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     X_APP_BEARER_TOKEN_ENV,
     X_MCP_URL,
@@ -36,7 +36,7 @@ from .config import (
 # system prompt mentions X only when the tools are actually wired in (e.g. it's
 # omitted when the connection fails or the token is unset).
 X_INSTRUCTION = """
-You can access X (formerly Twitter) to search posts, look up users and their recent posts, and check trends and news. Reach for it when the user asks what's happening on X, what someone posted, or for real-time reactions and trending topics. Access is read-only: you can search and read, but you cannot post, reply, like, or bookmark. When you relay a post, attribute it to its author and summarize it in plain spoken language rather than reading raw handles, links, or hashtags aloud.
+You can access X (formerly Twitter) to search posts, look up users and their recent posts, and check trends and news. Your X tools are the ones whose descriptions begin with the [X] tag; use them only to act on X. Reach for them when the user asks what's happening on X, what someone posted, or for real-time reactions and trending topics. Access is read-only: you can search and read, but you cannot post, reply, like, or bookmark. When you relay a post, attribute it to its author and summarize it in plain spoken language rather than reading raw handles, links, or hashtags aloud.
 """
 
 
@@ -56,7 +56,7 @@ async def _connect_x_mcp() -> tuple[MCPClient, ToolsSchema]:
         ),
     )
     await mcp.start()
-    tools = await mcp.get_tools_schema()
+    tools = prefix_tool_descriptions(await mcp.get_tools_schema(), "X")
     return mcp, tools
 
 
