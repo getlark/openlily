@@ -39,6 +39,7 @@ class BrainName(StrEnum):
 
     OPENAI_STANDARD = "openai_standard"
     CARTESIA_OPENAI = "cartesia_openai"
+    CARTESIA_META = "cartesia_meta"
     OPENAI_REALTIME = "openai_realtime"
     LOCAL_WHISPER_OLLAMA_KOKORO = "local_whisper_ollama_kokoro"
 

@@ -3,7 +3,7 @@
 Same shape as ``openai_standard`` -- and the same OpenAI Responses LLM
 (``gpt-5.4-mini`` with OpenAI's hosted ``web_search`` tool) -- but speech in/out
 runs on Cartesia's latest models (``ink-2`` STT, ``sonic-3.5`` TTS). The hosted
-web-search tool setup is identical, so it's reused from ``openai_standard``.
+web-search tool comes from the shared ``hosted_web_search_bundle`` helper.
 """
 
 from __future__ import annotations
@@ -15,9 +15,9 @@ from pipecat.transcriptions.language import Language
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 from env import require_env
+from tools.web import hosted_web_search_bundle
 
-from .base import BrainName, BrainServices, BrainSpec
-from .openai_standard import setup_tools
+from .base import BrainName, BrainServices, BrainSpec, ToolBundle
 from .overrides import get_brain_overrides
 
 # Cartesia TTS requires an explicit voice ID (no service default).
@@ -67,6 +67,11 @@ def build(system_instruction: str) -> BrainServices:
     )
 
     return BrainServices(llm=llm, stt=stt, tts=tts)
+
+
+async def setup_tools() -> ToolBundle:
+    """Attach OpenAI's hosted ``web_search`` tool (see ``hosted_web_search_bundle``)."""
+    return hosted_web_search_bundle()
 
 
 SPEC = BrainSpec(

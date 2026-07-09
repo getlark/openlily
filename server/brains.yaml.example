@@ -4,8 +4,8 @@
 # A present-but-invalid file (bad YAML, unknown brain/field, wrong type, or a
 # missing default_brain) is a startup error.
 
-# Which brain to run: openai_standard | cartesia_openai | openai_realtime |
-# local_whisper_ollama_kokoro.
+# Which brain to run: openai_standard | cartesia_openai | cartesia_meta |
+# openai_realtime | local_whisper_ollama_kokoro.
 # Required: if this file exists it MUST set default_brain (else startup errors).
 default_brain: cartesia_openai
 
@@ -41,6 +41,18 @@ cartesia_openai:
     model: ink-2
   llm:
     model: gpt-5.4-mini
+  tts:
+    model: sonic-3.5
+    voice: db6b0ed5-d5d3-463d-ae85-518a07d3c2b4
+
+# Cartesia STT/TTS + Meta LLM cascade. The LLM (muse-spark-1.1) runs on the
+# OpenAI-compatible Meta Model API; needs META_API_KEY (plus CARTESIA_API_KEY for
+# STT/TTS).
+cartesia_meta:
+  stt:
+    model: ink-2
+  llm:
+    model: muse-spark-1.1
   tts:
     model: sonic-3.5
     voice: db6b0ed5-d5d3-463d-ae85-518a07d3c2b4

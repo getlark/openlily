@@ -73,6 +73,7 @@ class BrainOverrides(BaseModel):
 
     openai_standard: _Cascade = Field(default_factory=_Cascade)
     cartesia_openai: _Cascade = Field(default_factory=_Cascade)
+    cartesia_meta: _Cascade = Field(default_factory=_Cascade)
     openai_realtime: _Realtime = Field(default_factory=_Realtime)
     local_whisper_ollama_kokoro: _Cascade = Field(default_factory=_Cascade)
 

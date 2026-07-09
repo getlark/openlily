@@ -7,7 +7,6 @@ local function callback). See ``setup_tools``.
 
 from __future__ import annotations
 
-from pipecat.adapters.schemas.tools_schema import AdapterType
 from pipecat.services.openai.responses.llm import OpenAIResponsesLLMService
 from pipecat.services.openai.stt import OpenAISTTService
 from pipecat.services.openai.tts import OpenAITTSService
@@ -15,7 +14,7 @@ from pipecat.transcriptions.language import Language
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 from env import require_env
-from tools.web import WEB_SEARCH_INSTRUCTION
+from tools.web import hosted_web_search_bundle
 
 from .base import BrainName, BrainServices, BrainSpec, ToolBundle
 from .overrides import get_brain_overrides
@@ -87,18 +86,12 @@ def build(system_instruction: str) -> BrainServices:
 
 
 async def setup_tools() -> ToolBundle:
-    """Attach OpenAI's hosted web search tool to the LLM context.
+    """Attach OpenAI's hosted ``web_search`` tool to the LLM context.
 
-    ``web_search`` is a server-side tool of the Responses API: the model runs
-    the search itself and reads the results, so there's no local handler to
-    register or clean up. ``search_context_size`` is kept low to keep voice
-    turns fast and concise; raise it if answers need broader coverage.
+    Built by the shared ``hosted_web_search_bundle`` helper so every Responses-API
+    brain wires the same tool the same way (see ``tools/web``).
     """
-    web_search = {"type": "web_search", "search_context_size": "low"}
-    return ToolBundle(
-        custom_tools={AdapterType.OPENAI: [web_search]},
-        instructions=[WEB_SEARCH_INSTRUCTION],
-    )
+    return hosted_web_search_bundle()
 
 
 SPEC = BrainSpec(

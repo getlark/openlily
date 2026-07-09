@@ -14,6 +14,7 @@ the email tool uses.
 from __future__ import annotations
 
 from loguru import logger
+from pipecat.adapters.schemas.tools_schema import AdapterType
 
 from brains.base import ToolBundle
 
@@ -29,6 +30,32 @@ WEB_SEARCH_INSTRUCTION = (
     "external information. These are fast, so prefer them for quick, "
     "casual lookups if you have multiple options."
 )
+
+def hosted_web_search_bundle(search_context_size: str = "low") -> ToolBundle:
+    """Bundle a provider-hosted ``web_search`` tool (no local handler).
+
+    ``web_search`` is a server-side tool of the OpenAI-style Responses API: the
+    model runs the search itself and reads the results, so there's nothing to
+    register or clean up. Shared by every brain whose LLM speaks that API --
+    OpenAI's own models (``openai_standard``, ``cartesia_openai``) and Meta's
+    OpenAI-compatible Responses endpoint (``cartesia_meta``) -- so no brain has
+    to import another's tool setup.
+
+    The adapter key stays ``AdapterType.OPENAI`` even for Meta: it just tags the
+    tool as OpenAI-shaped, which Meta's compatible API accepts. ``search_context_size``
+    (``low`` | ``medium`` | ``high``) trades breadth for latency; the ``low``
+    default keeps voice turns fast and concise.
+    """
+    web_search = {"type": "web_search", "search_context_size": search_context_size}
+    return ToolBundle(
+        # Keyed by wire *protocol*, not vendor: AdapterType.OPENAI is the bucket the
+        # OpenAI adapter reads (Chat Completions / Responses / Realtime), so every
+        # OpenAI-shaped LLM finds the tool here -- including Meta's compatible API.
+        # Tools under any other adapter key are ignored by the OpenAI adapter.
+        custom_tools={AdapterType.OPENAI: [web_search]},
+        instructions=[WEB_SEARCH_INSTRUCTION],
+    )
+
 
 # Registry of available providers. Add new ones here; select via config.py.
 _PROVIDERS: dict[str, type[ToolProvider]] = {
@@ -70,4 +97,4 @@ def setup_web_tools() -> ToolBundle:
     )
 
 
-__all__ = ["WEB_SEARCH_INSTRUCTION", "setup_web_tools"]
+__all__ = ["WEB_SEARCH_INSTRUCTION", "hosted_web_search_bundle", "setup_web_tools"]

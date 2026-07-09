@@ -14,6 +14,7 @@ from collections.abc import Callable
 # (mlx-whisper/whisper/kokoro -> torch/CUDA), which a cloud-only install won't
 # have. It's loaded on demand in ``_load_local_whisper_ollama_kokoro`` instead.
 from . import (
+    cartesia_meta,
     cartesia_openai,
     openai_realtime,
     openai_standard,
@@ -60,6 +61,7 @@ def _load_local_whisper_ollama_kokoro() -> BrainSpec:
 _BRAIN_LOADERS: dict[BrainName, Callable[[], BrainSpec]] = {
     openai_standard.SPEC.name: lambda: openai_standard.SPEC,
     cartesia_openai.SPEC.name: lambda: cartesia_openai.SPEC,
+    cartesia_meta.SPEC.name: lambda: cartesia_meta.SPEC,
     openai_realtime.SPEC.name: lambda: openai_realtime.SPEC,
     BrainName.LOCAL_WHISPER_OLLAMA_KOKORO: _load_local_whisper_ollama_kokoro,
 }
