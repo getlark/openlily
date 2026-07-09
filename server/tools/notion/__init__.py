@@ -18,11 +18,12 @@ from __future__ import annotations
 
 from loguru import logger
 from mcp import StdioServerParameters
-from pipecat.services.llm_service import LLMService
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
+from ..mcp_bundle import mcp_tool_bundle
 from .config import (
     NOTION_ACCESS_TOKEN_ENV,
     NOTION_MCP_ARGS,
@@ -37,6 +38,29 @@ from .config import (
 NOTION_INSTRUCTION = """
 You can access the user's Notion workspace to search for pages and databases, read page content, query database rows, and create or update pages when asked. Use search before guessing page or database IDs. Prefer reading page content via markdown retrieval rather than walking individual blocks. Summarize Notion results in plain spoken language: do not read raw UUIDs, markdown syntax, or long lists aloud. When the user asks to change or delete content and their intent is ambiguous, confirm before making destructive edits.
 """
+
+
+async def _connect_notion_mcp() -> tuple[MCPClient, ToolsSchema]:
+    """Start the Notion MCP server and return the client plus tool schemas."""
+    token = get_notion_access_token()
+    if not token:
+        raise RuntimeError(
+            f"{NOTION_ACCESS_TOKEN_ENV} is required for Notion tools. Set it in .env, "
+            "or remove 'notion' from the 'tools' list in brains.yaml."
+        )
+
+    tools_filter = NOTION_MCP_TOOLS_FILTER
+    mcp = MCPClient(
+        server_params=StdioServerParameters(
+            command=NOTION_MCP_COMMAND,
+            args=list(NOTION_MCP_ARGS),
+            env=build_notion_mcp_env(token),
+        ),
+        tools_filter=tools_filter,
+    )
+    await mcp.start()
+    tools = await mcp.get_tools_schema()
+    return mcp, tools
 
 
 async def setup_notion_tools() -> ToolBundle:
@@ -59,18 +83,8 @@ async def setup_notion_tools() -> ToolBundle:
             "or remove 'notion' from the 'tools' list in brains.yaml."
         )
 
-    tools_filter = NOTION_MCP_TOOLS_FILTER
-    mcp = MCPClient(
-        server_params=StdioServerParameters(
-            command=NOTION_MCP_COMMAND,
-            args=list(NOTION_MCP_ARGS),
-            env=build_notion_mcp_env(token),
-        ),
-        tools_filter=tools_filter,
-    )
     try:
-        await mcp.start()
-        tools = await mcp.get_tools_schema()
+        mcp, tools = await _connect_notion_mcp()
     except Exception:
         logger.exception(
             "Notion tools unavailable: failed to start Notion MCP server "
@@ -78,20 +92,17 @@ async def setup_notion_tools() -> ToolBundle:
             f"installed, and is {NOTION_ACCESS_TOKEN_ENV} a valid integration token? "
             "Continuing without Notion tools."
         )
-        await mcp.close()
         return ToolBundle()
 
-    async def register(llm: LLMService) -> None:
-        await mcp.register_tools_schema(tools, llm)
-
+    tools_filter = NOTION_MCP_TOOLS_FILTER
     filter_note = f" (filtered to {len(tools.standard_tools)} tools)" if tools_filter else ""
-    logger.info(f"Notion tools ready: {len(tools.standard_tools)} Notion MCP tools{filter_note}")
-    return ToolBundle(
-        standard_tools=list(tools.standard_tools),
-        instructions=[NOTION_INSTRUCTION],
-        registrations=[register],
-        cleanups=[mcp.close],
+    return mcp_tool_bundle(
+        mcp,
+        tools,
+        [NOTION_INSTRUCTION],
+        close_on_cleanup=True,
+        ready_log=f"Notion tools ready: {len(tools.standard_tools)} Notion MCP tools{filter_note}",
     )
 
 
-__all__ = ["NOTION_INSTRUCTION", "setup_notion_tools"]
+__all__ = ["NOTION_INSTRUCTION", "_connect_notion_mcp", "setup_notion_tools"]

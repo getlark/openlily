@@ -62,7 +62,7 @@ from idle_keepalive import BotBusyFrame, IdleKeepaliveProcessor
 from observers import ConversationLogObserver
 from prompt import build_system_instruction
 from sound import ReadinessChimeFrame, chime_pcm
-from tools import setup_generic_tools
+from tools import setup_generic_tools, shutdown_generic_tools, warmup_generic_tools
 from working_sound import WorkingSoundProcessor
 
 load_dotenv(override=True)
@@ -295,12 +295,20 @@ async def _warmup_brain(brain: BrainSpec) -> None:
     logger.info("Warmup complete")
 
 
+async def _warmup() -> None:
+    """Eagerly load brain models and MCP tools once per process (parallel)."""
+    import asyncio
+
+    brain = get_brain()
+    await asyncio.gather(_warmup_brain(brain), warmup_generic_tools())
+
+
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> None:
     """Run the voice bot for a dev-runner session (browser WebRTC UI)."""
     brain = get_brain()
     logger.info(f"Starting bot (brain={brain.name}, realtime={brain.is_realtime})")
 
-    await _warmup_brain(brain)
+    await _warmup()
 
     pipeline, tool_bundle = await _build_pipeline(transport, brain)
     worker = _build_worker(pipeline)
@@ -322,6 +330,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         await runner.run()
     finally:
         await close_tool_bundle(tool_bundle)
+        await shutdown_generic_tools()
 
 
 async def bot(runner_args: RunnerArguments):
@@ -372,9 +381,12 @@ async def run_session(*, handle_sigint: bool) -> None:
 
 async def run_local() -> None:
     """Run the bot over local mic/speakers - the terminal voice CLI."""
-    await _warmup_brain(get_brain())
-    logger.info("Local voice bot ready - start talking. Press Ctrl+C to stop.")
-    await run_session(handle_sigint=True)
+    try:
+        await _warmup()
+        logger.info("Local voice bot ready - start talking. Press Ctrl+C to stop.")
+        await run_session(handle_sigint=True)
+    finally:
+        await shutdown_generic_tools()
 
 
 def _wake_models() -> list[str]:
@@ -397,12 +409,20 @@ def run_wake_gated() -> None:
     idles out, then listening resumes. Press Ctrl+C to stop.
 
     This function is synchronous: the blocking wake-word listen loop runs in the
-    main thread (so Ctrl+C interrupts it cleanly), and each session gets its own
-    event loop via ``asyncio.run``.
+    main thread (so Ctrl+C interrupts it cleanly). All async work - warmup, every
+    session, and shutdown - runs on a single long-lived event loop via
+    ``run_until_complete`` (not ``asyncio.run``, which would create and destroy a
+    fresh loop each call). One persistent loop is required so the warmed MCP pool
+    connections, whose anyio task groups are bound to the loop that created them,
+    stay valid and reusable across sessions rather than dying when warmup's loop
+    would otherwise close.
     """
     import asyncio
 
     from wakeword import PyAudioSource, WakeWordEngine, WakeWordListener
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Warm the brain's models up front (before we start listening) so the very
     # first session doesn't stall on a model download / LLM cold start, and so
@@ -410,7 +430,7 @@ def run_wake_gated() -> None:
     # word. Fail-fast: a known-broken setup (e.g. Ollama not running) aborts the
     # process here with a clear message, rather than being swallowed by the
     # per-session error handler in the wake loop below and looping forever.
-    asyncio.run(_warmup_brain(get_brain()))
+    loop.run_until_complete(_warmup())
 
     models = _wake_models()
     # Constructing the engine imports openwakeword/onnxruntime and loads the
@@ -429,12 +449,15 @@ def run_wake_gated() -> None:
             label = listener.wait_for_wake()  # blocks (main thread); owns the mic
             logger.info(f"Wake word '{label}' detected; starting session")
             try:
-                asyncio.run(run_session(handle_sigint=False))
+                loop.run_until_complete(run_session(handle_sigint=False))
             except Exception:
                 logger.exception("Session error; returning to wake-word listening")
             logger.info("Session ended; resuming wake-word listening")
     except KeyboardInterrupt:
         logger.info("Stopping wake-gated mode")
+    finally:
+        loop.run_until_complete(shutdown_generic_tools())
+        loop.close()
 
 
 if __name__ == "__main__":

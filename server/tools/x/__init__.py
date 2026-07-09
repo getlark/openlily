@@ -19,11 +19,12 @@ from __future__ import annotations
 
 from loguru import logger
 from mcp.client.session_group import StreamableHttpParameters
-from pipecat.services.llm_service import LLMService
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
+from ..mcp_bundle import mcp_tool_bundle
 from .config import (
     X_APP_BEARER_TOKEN_ENV,
     X_MCP_URL,
@@ -37,6 +38,26 @@ from .config import (
 X_INSTRUCTION = """
 You can access X (formerly Twitter) to search posts, look up users and their recent posts, and check trends and news. Reach for it when the user asks what's happening on X, what someone posted, or for real-time reactions and trending topics. Access is read-only: you can search and read, but you cannot post, reply, like, or bookmark. When you relay a post, attribute it to its author and summarize it in plain spoken language rather than reading raw handles, links, or hashtags aloud.
 """
+
+
+async def _connect_x_mcp() -> tuple[MCPClient, ToolsSchema]:
+    """Connect to X's hosted MCP server and return the client plus tool schemas."""
+    token = get_x_bearer_token()
+    if not token:
+        raise RuntimeError(
+            f"{X_APP_BEARER_TOKEN_ENV} is required for X tools. Set it in .env, "
+            "or remove 'x' from the 'tools' list in brains.yaml."
+        )
+
+    mcp = MCPClient(
+        server_params=StreamableHttpParameters(
+            url=X_MCP_URL,
+            headers=build_x_mcp_headers(token),
+        ),
+    )
+    await mcp.start()
+    tools = await mcp.get_tools_schema()
+    return mcp, tools
 
 
 async def setup_x_tools() -> ToolBundle:
@@ -60,34 +81,23 @@ async def setup_x_tools() -> ToolBundle:
         )
         return ToolBundle()
 
-    mcp = MCPClient(
-        server_params=StreamableHttpParameters(
-            url=X_MCP_URL,
-            headers=build_x_mcp_headers(token),
-        ),
-    )
     try:
-        await mcp.start()
-        tools = await mcp.get_tools_schema()
+        mcp, tools = await _connect_x_mcp()
     except Exception:
         logger.exception(
             f"X tools unavailable: failed to connect to X's MCP server ({X_MCP_URL}). "
             f"Is {X_APP_BEARER_TOKEN_ENV} a valid App-only Bearer token, and is the "
             "network reachable? Continuing without X tools."
         )
-        await mcp.close()
         return ToolBundle()
 
-    async def register(llm: LLMService) -> None:
-        await mcp.register_tools_schema(tools, llm)
-
-    logger.info(f"X tools ready: {len(tools.standard_tools)} X MCP tools")
-    return ToolBundle(
-        standard_tools=list(tools.standard_tools),
-        instructions=[X_INSTRUCTION],
-        registrations=[register],
-        cleanups=[mcp.close],
+    return mcp_tool_bundle(
+        mcp,
+        tools,
+        [X_INSTRUCTION],
+        close_on_cleanup=True,
+        ready_log=f"X tools ready: {len(tools.standard_tools)} X MCP tools",
     )
 
 
-__all__ = ["X_INSTRUCTION", "setup_x_tools"]
+__all__ = ["X_INSTRUCTION", "_connect_x_mcp", "setup_x_tools"]

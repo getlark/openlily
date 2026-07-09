@@ -15,12 +15,18 @@ name via the ``tools`` list in ``brains.yaml`` (see ``brains/overrides.py`` and
 ``get_enabled_tools``). Enabling a tool whose credentials are missing is a
 fail-fast startup error rather than a silent skip -- if you asked for it, we
 won't quietly run without it.
+
+Enabled MCP-backed tools (browser, notion, x) are warmed once at process launch
+via ``warmup_generic_tools()`` and reused across sessions (see ``mcp_pool.py``).
 """
 
 from __future__ import annotations
 
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+
+from loguru import logger
 
 from brains.base import ToolBundle, ToolName, merge_tool_bundles
 from brains.config import get_enabled_tools
@@ -28,6 +34,13 @@ from brains.config import get_enabled_tools
 from .browser import setup_browser_tools
 from .browser.config import is_configured as browser_is_configured
 from .email import email_is_configured, setup_email_tools
+from .mcp_pool import (
+    MCP_OPTIONAL_TOOLS,
+    _shutdown_mcp_pool,
+    _warmup_mcp_pool,
+    is_mcp_tool_pooled,
+    pooled_session_bundle,
+)
 from .notion import setup_notion_tools
 from .notion.config import is_configured as notion_is_configured
 from .session import setup_session_tools
@@ -92,7 +105,11 @@ async def setup_generic_tools() -> ToolBundle:
     each is checked for its credentials first and raises a ``RuntimeError`` if
     it's enabled but unconfigured -- a fail-fast startup error, surfaced through
     ``_build_pipeline`` in ``bot.py``. Results are merged into one ``ToolBundle``.
+
+    When the MCP pool has been warmed (``warmup_generic_tools``), MCP-backed
+    tools reuse pooled connections instead of spawning fresh servers.
     """
+    t0 = time.monotonic()
     bundles = [await setup() for setup in _ALWAYS_ON_SETUPS]
 
     for name in get_enabled_tools():
@@ -103,9 +120,50 @@ async def setup_generic_tools() -> ToolBundle:
                 f"configured. Set {tool.requirement} (in .env), or remove "
                 f"{name.value!r} from the 'tools' list."
             )
-        bundles.append(await tool.setup())
+        if name in MCP_OPTIONAL_TOOLS:
+            # MCP tools must be warmed at process startup (see warmup_generic_tools).
+            # If an enabled+configured MCP tool isn't pooled here, warmup was skipped
+            # or failed silently -- a bug, not something to recover from by spawning
+            # a fresh (slow) per-session server.
+            if not is_mcp_tool_pooled(name):
+                raise RuntimeError(
+                    f"Tool {name.value!r} is enabled but not in the MCP pool. "
+                    "warmup_generic_tools() must run before setup_generic_tools()."
+                )
+            bundles.append(pooled_session_bundle(name))
+        else:
+            bundles.append(await tool.setup())
 
+    elapsed = time.monotonic() - t0
+    logger.info(f"Generic tools bundle ready in {elapsed:.2f}s")
     return merge_tool_bundles(*bundles)
 
 
-__all__ = ["setup_generic_tools"]
+def _assert_enabled_tools_configured() -> None:
+    """Fail-fast when an enabled optional tool is missing its credentials."""
+    for name in get_enabled_tools():
+        tool = _OPTIONAL_TOOLS[name]
+        if not tool.is_configured():
+            raise RuntimeError(
+                f"Tool {name.value!r} is enabled in brains.yaml but is not "
+                f"configured. Set {tool.requirement} (in .env), or remove "
+                f"{name.value!r} from the 'tools' list."
+            )
+
+
+async def warmup_generic_tools() -> None:
+    """Validate enabled tools and eagerly start MCP connections once per process."""
+    _assert_enabled_tools_configured()
+    await _warmup_mcp_pool()
+
+
+async def shutdown_generic_tools() -> None:
+    """Close pooled MCP connections at process exit."""
+    await _shutdown_mcp_pool()
+
+
+__all__ = [
+    "setup_generic_tools",
+    "shutdown_generic_tools",
+    "warmup_generic_tools",
+]

@@ -25,11 +25,12 @@ import os
 
 from loguru import logger
 from mcp import StdioServerParameters
-from pipecat.services.llm_service import LLMService
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
 from brains.base import ToolBundle
 
+from ..mcp_bundle import mcp_tool_bundle
 from .config import (
     BROWSER_CDP_ENDPOINT_ENV,
     BROWSER_MCP_COMMAND,
@@ -42,6 +43,23 @@ from .config import (
 BROWSER_INSTRUCTION = """
 You can control a web browser to navigate to sites, read page contents, and take actions on a page (clicking, typing, filling forms). It's slower than web search, so reach for it when search and fetch fall short: when you need something precise, live details from a specific page, or when a task requires interacting with a site rather than just reading it. When using browser tool try to perform the complete the task the user gave you --  it might require multiple steps to complete the task. For example, if the users asks to search for something, it's beter to find the relevant page and opoen that that shows relevant information rather than just doing an initial google search and asking the user to navigate to the page.
 """
+
+
+async def _connect_browser_mcp() -> tuple[MCPClient, ToolsSchema]:
+    """Start the Playwright MCP server and return the client plus tool schemas."""
+    if not os.getenv(BROWSER_CDP_ENDPOINT_ENV):
+        raise RuntimeError(
+            f"{BROWSER_CDP_ENDPOINT_ENV} is required for browser tools. Set it in .env, "
+            "or remove 'browser' from the 'tools' list in brains.yaml."
+        )
+
+    args = build_browser_mcp_args()
+    mcp = MCPClient(
+        server_params=StdioServerParameters(command=BROWSER_MCP_COMMAND, args=args),
+    )
+    await mcp.start()
+    tools = await mcp.get_tools_schema()
+    return mcp, tools
 
 
 async def setup_browser_tools() -> ToolBundle:
@@ -66,12 +84,8 @@ async def setup_browser_tools() -> ToolBundle:
         return ToolBundle()
 
     args = build_browser_mcp_args()
-    mcp = MCPClient(
-        server_params=StdioServerParameters(command=BROWSER_MCP_COMMAND, args=args),
-    )
     try:
-        await mcp.start()
-        tools = await mcp.get_tools_schema()
+        mcp, tools = await _connect_browser_mcp()
     except Exception:
         logger.exception(
             "Browser tools unavailable: failed to start Playwright MCP server "
@@ -79,21 +93,15 @@ async def setup_browser_tools() -> ToolBundle:
             f"is a browser listening on {BROWSER_CDP_ENDPOINT_ENV} (Chrome started with "
             "--remote-debugging-port)? Continuing without browser tools."
         )
-        await mcp.close()
         return ToolBundle()
 
-    async def register(llm: LLMService) -> None:
-        await mcp.register_tools_schema(tools, llm)
-
-    logger.info(
-        f"Browser tools ready: {len(tools.standard_tools)} Playwright MCP tools"
-    )
-    return ToolBundle(
-        standard_tools=list(tools.standard_tools),
-        instructions=[BROWSER_INSTRUCTION],
-        registrations=[register],
-        cleanups=[mcp.close],
+    return mcp_tool_bundle(
+        mcp,
+        tools,
+        [BROWSER_INSTRUCTION],
+        close_on_cleanup=True,
+        ready_log=f"Browser tools ready: {len(tools.standard_tools)} Playwright MCP tools",
     )
 
 
-__all__ = ["BROWSER_INSTRUCTION", "setup_browser_tools"]
+__all__ = ["BROWSER_INSTRUCTION", "_connect_browser_mcp", "setup_browser_tools"]
