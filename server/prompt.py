@@ -36,6 +36,7 @@ BASE_INSTRUCTIONS = Template(
         - Spell out numbers, phone numbers, or email addresses
         - Omit `https://` and other formatting if listing a web url
         - Avoid acronyms and words with unclear pronunciation, when possible.
+        - When sharing information with the user like links, do not make them up and always verify the url is correct before sharing it.
         </OutputRules>
 
 
@@ -64,7 +65,9 @@ def build_system_instruction(tool_instructions: Sequence[str] | None = None) -> 
     session so the model always has the current date.
     """
     # Leading newline per bullet so an empty list leaves no blank line behind.
-    tool_bullets = "".join(f"\n- {instruction}" for instruction in (tool_instructions or []))
+    tool_bullets = "".join(
+        f"\n- {instruction}" for instruction in (tool_instructions or [])
+    )
     base = BASE_INSTRUCTIONS.substitute(tool_instructions=tool_bullets)
     today = datetime.now().strftime("%A, %B %-d, %Y")
     return f"{base}\n# Current context\n\n- Today's date is {today}.\n"

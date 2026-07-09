@@ -35,6 +35,7 @@ from .resend_provider import ResendProvider
 EMAIL_INSTRUCTION = (
     "You can email the user; emails always go to the user's own address. Use it "
     "when the user asks to be emailed something, such as a summary or notes. "
+    "Format the email nicely when possible (like in markdown format)."
 )
 
 # Registry of available providers. Add new ones here; select via config.py.

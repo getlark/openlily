@@ -2274,6 +2274,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "exa-py" },
     { name = "livekit" },
+    { name = "markdown" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
     { name = "pipecat-ai", extra = ["local", "mcp", "runner", "webrtc"] },
@@ -2298,6 +2299,7 @@ dev = [
 requires-dist = [
     { name = "exa-py", specifier = ">=2.14.0" },
     { name = "livekit", specifier = ">=1.0" },
+    { name = "markdown", specifier = ">=3.7" },
     { name = "onnxruntime" },
     { name = "openwakeword", specifier = "~=0.6" },
     { name = "pipecat-ai", extras = ["cartesia", "local", "mcp", "openai", "runner", "silero", "webrtc"], specifier = ">=1.4.0" },

@@ -24,6 +24,9 @@ dependencies = [
     "openwakeword~=0.6",
     "onnxruntime",
     "resend>=2.30.1",
+    # Render the Markdown email body to HTML in tools/email/resend_provider.py.
+    # Ships transitively with pipecat-ai, but we import it directly, so pin it.
+    "markdown>=3.7",
     # Parse the optional brains.yaml model/voice overrides (brains/overrides.py).
     "pyyaml>=6",
 ]
