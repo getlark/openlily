@@ -15,7 +15,10 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+
+from pipecat.services.llm_service import LLMService
+from pipecat.services.stt_service import STTService
+from pipecat.services.tts_service import TTSService
 
 from openlily.tools.contracts import ToolId
 
@@ -48,9 +51,9 @@ class BrainServices:
     STT + LLM + TTS itself); ``stt`` and ``tts`` stay ``None``.
     """
 
-    llm: Any
-    stt: Any | None = None
-    tts: Any | None = None
+    llm: LLMService
+    stt: STTService | None = None
+    tts: TTSService | None = None
 
 
 @dataclass(frozen=True)
