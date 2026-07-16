@@ -3,8 +3,11 @@
 Using openlily as a library in your own Pipecat agent. Install it first:
 
 ```bash
-pip install openlily        # from this repo: pip install ./server
+pip install "openlily @ git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
 ```
+
+See the [install section in the README](../README.md#install) for uv, the
+`local-models` extra, and how to move to a newer release.
 
 - [pipecat_cloud_bot.py](pipecat_cloud_bot.py) - a turnkey `bot(runner_args)` entry
   point for Pipecat Cloud (or the dev runner): pick a brain, enable tools, and

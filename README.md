@@ -296,9 +296,42 @@ Pipecat Cloud. Everything is modular: the "working" cue and readiness chime are
 optional, the prompt/observers/VAD are overridable, and you can add your own brain
 or tool without forking.
 
+### Install
+
+openlily isn't on PyPI; install it straight from GitHub, pinned to a release tag
+(the package lives in the `server/` subdirectory of the repo):
+
 ```bash
-pip install openlily        # from this repo: pip install ./server
+# pip
+pip install "openlily @ git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
+
+# uv (adds it to your project's pyproject.toml)
+uv add "git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
 ```
+
+The on-device brain (`local_whisper_ollama_kokoro`) needs its heavy model runtimes,
+which are an optional extra:
+
+```bash
+pip install "openlily[local-models] @ git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
+```
+
+Pin to a tag (`@v0.1.0`) for reproducible builds. To move to a newer release, bump
+the tag and reinstall:
+
+```bash
+# pip: re-point at the new tag
+pip install --upgrade "openlily @ git+https://github.com/getlark/openlily.git@v0.2.0#subdirectory=server"
+
+# uv: update the tag in pyproject.toml, or re-add
+uv add "git+https://github.com/getlark/openlily.git@v0.2.0#subdirectory=server"
+```
+
+To track the latest unreleased code instead of a tag, use `@main` (not recommended
+for production — it moves without warning). See the [releases](https://github.com/getlark/openlily/releases)
+for available versions. The repo is private, so installs need GitHub access (an SSH
+key, or a token — swap the URL for `git+ssh://git@github.com/getlark/openlily.git`
+to use SSH).
 
 ```python
 import openlily
