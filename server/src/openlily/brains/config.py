@@ -8,7 +8,7 @@ Otherwise the brain is selected by the ``default_brain`` key in ``brains.yaml``
 
 from __future__ import annotations
 
-from tools.contracts import ToolName
+from openlily.tools.contracts import ToolName
 
 from .base import BrainName
 from .overrides import get_brain_overrides

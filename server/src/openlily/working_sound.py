@@ -41,7 +41,7 @@ from pipecat.frames.frames import (
 )
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
-from sound import working_sound_pcm
+from openlily.sound import working_sound_pcm
 
 # 16-bit mono PCM: two bytes per sample.
 _BYTES_PER_SAMPLE = 2

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from tools.contracts import ToolName
+from openlily.tools.contracts import ToolName
 
 # Cloud brains are lightweight, so import them eagerly. The local-model brain is
 # NOT imported here: its module pulls in the optional on-device runtimes
@@ -51,9 +51,9 @@ def _load_local_whisper_ollama_kokoro() -> BrainSpec:
     return local_whisper_ollama_kokoro.SPEC
 
 
-# Every selectable brain -> a loader that returns its ``BrainSpec``. Cloud
-# brains return their already-imported SPEC; the local brain imports on demand so
-# its heavy optional deps are only required when it's actually selected.
+# Every built-in selectable brain -> a loader that returns its ``BrainSpec``.
+# Cloud brains return their already-imported SPEC; the local brain imports on
+# demand so its heavy optional deps are only required when it's actually selected.
 _BRAIN_LOADERS: dict[BrainName, Callable[[], BrainSpec]] = {
     openai_standard.SPEC.name: lambda: openai_standard.SPEC,
     cartesia_openai.SPEC.name: lambda: cartesia_openai.SPEC,
@@ -62,12 +62,34 @@ _BRAIN_LOADERS: dict[BrainName, Callable[[], BrainSpec]] = {
     BrainName.LOCAL_WHISPER_OLLAMA_KOKORO: _load_local_whisper_ollama_kokoro,
 }
 
+# Brains registered at runtime by a library consumer via ``register_brain``.
+# Keyed by the spec's name (a plain string, so custom brains aren't limited to
+# the built-in ``BrainName`` members). Checked before the built-in loaders, so a
+# consumer can also override a built-in brain by re-registering its name.
+_CUSTOM_BRAINS: dict[str, BrainSpec] = {}
 
-def get_brain(name: BrainName | None = None) -> BrainSpec:
+
+def register_brain(spec: BrainSpec) -> None:
+    """Register a custom brain so ``get_brain(spec.name)`` (and the CLI) can select it.
+
+    Lets a library consumer add a brain without editing this package: build a
+    ``BrainSpec`` (its ``name`` may be any string, not just a ``BrainName``
+    member) and register it at import time. Re-registering an existing name
+    overrides it.
+    """
+    _CUSTOM_BRAINS[str(spec.name)] = spec
+
+
+def get_brain(name: BrainName | str | None = None) -> BrainSpec:
     name = name or get_brain_name()
-    if name not in _BRAIN_LOADERS:
-        raise ValueError(f"Unknown brain {name!r}; choose from {sorted(_BRAIN_LOADERS)}")
-    return _BRAIN_LOADERS[name]()
+    key = str(name)
+    if key in _CUSTOM_BRAINS:
+        return _CUSTOM_BRAINS[key]
+    for brain_name, loader in _BRAIN_LOADERS.items():
+        if str(brain_name) == key:
+            return loader()
+    known = sorted([*(str(n) for n in _BRAIN_LOADERS), *_CUSTOM_BRAINS])
+    raise ValueError(f"Unknown brain {name!r}; choose from {known}")
 
 
 __all__ = [
@@ -77,4 +99,5 @@ __all__ = [
     "ToolName",
     "get_brain",
     "get_enabled_tools",
+    "register_brain",
 ]

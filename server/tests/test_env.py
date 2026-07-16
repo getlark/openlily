@@ -1,10 +1,10 @@
-"""Tests for the fail-fast env helper (``server/env.py``)."""
+"""Tests for the fail-fast env helper (``openlily/env.py``)."""
 
 from __future__ import annotations
 
 import pytest
 
-from env import require_env
+from openlily.env import require_env
 
 
 def test_returns_value_when_set(monkeypatch: pytest.MonkeyPatch) -> None:

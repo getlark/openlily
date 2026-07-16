@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from brains.base import BrainName
-from brains.overrides import BrainOverrides, get_brain_overrides
-from tools.contracts import ToolName
+from openlily.brains.base import BrainName
+from openlily.brains.overrides import BrainOverrides, get_brain_overrides
+from openlily.tools.contracts import ToolName
 
 
 def test_no_file_returns_empty_defaults(no_brains_yaml: Path) -> None:

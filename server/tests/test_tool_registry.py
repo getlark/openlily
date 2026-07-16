@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from brains import cartesia_meta, cartesia_openai, openai_realtime, openai_standard
-from tools.contracts import ToolActivation, ToolBackend, ToolName
-from tools.registry import all_tool_specs, is_registered
+from openlily.brains import cartesia_meta, cartesia_openai, openai_realtime, openai_standard
+from openlily.tools.contracts import ToolActivation, ToolBackend, ToolName
+from openlily.tools.registry import all_tool_specs, is_registered
 
 
 def test_every_configurable_name_has_exactly_one_spec() -> None:

@@ -28,7 +28,7 @@ from typing import Callable
 import numpy as np
 from loguru import logger
 
-from wakeword import WakeWordEngine
+from openlily.local.wakeword import WakeWordEngine
 
 # openWakeWord expects 16 kHz mono int16 audio in 80 ms (1280-sample) chunks.
 FRAME_LENGTH = 1280

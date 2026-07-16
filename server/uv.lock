@@ -2270,7 +2270,7 @@ wheels = [
 [[package]]
 name = "openlily"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "exa-py" },
     { name = "livekit" },

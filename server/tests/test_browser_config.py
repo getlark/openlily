@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.browser.config import (
+from openlily.tools.browser.config import (
     BROWSER_CDP_ENDPOINT_ENV,
     BROWSER_MCP_BASE_ARGS,
     build_browser_mcp_args,
