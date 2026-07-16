@@ -12,10 +12,10 @@ Everything runs on-device, with no external API and no API keys:
 - TTS: ``KokoroTTSService``, default voice ``af_heart``. The model/voices file
   is downloaded and cached on first use.
 
-Per-brain tools are omitted (``setup_tools=None``): web/browser/email reach out
+Per-brain tools are omitted (``tools=()``): web/browser/email reach out
 to cloud services, which would break the "fully local" contract. The generic
-``end_session`` tool (see ``tools/session/``) is still wired in via
-``setup_generic_tools`` -- it only ends the local session. Model names and the
+``end_session`` tool (see ``tools/session/``) is still wired in by the central
+tool runtime -- it only ends the local session. Model names and the
 TTS voice can still be overridden per the usual ``brains.yaml`` mechanism (see
 ``brains/overrides.py``).
 """
@@ -126,8 +126,7 @@ async def _warmup_ollama(model: str) -> None:
     if resp.status_code == 404:
         # Server is up but the model isn't downloaded.
         raise RuntimeError(
-            f"Ollama model {model!r} is not available. Run `ollama pull {model}` "
-            f"and relaunch."
+            f"Ollama model {model!r} is not available. Run `ollama pull {model}` and relaunch."
         )
     resp.raise_for_status()
 
@@ -165,6 +164,5 @@ SPEC = BrainSpec(
     name=BrainName.LOCAL_WHISPER_OLLAMA_KOKORO,
     is_realtime=False,
     build=build,
-    setup_tools=None,
     warmup=warmup,
 )

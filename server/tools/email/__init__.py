@@ -1,7 +1,7 @@
 """Generic email tool, organized by provider.
 
-Like ``tools/browser/``, this is brain-agnostic: it's layered onto every brain
-centrally in ``bot.py`` via ``setup_generic_tools``. It mirrors the LiveKit
+Like ``tools/browser/``, this is brain-agnostic: the registry-driven runtime
+layers it onto every brain when enabled. It mirrors the LiveKit
 agent's ``send_email_to_user`` tool -- a single ``send_email_to_user`` function
 that sends plain-text email to the user's own configured address (this is a
 single-user assistant, so there's no free-form recipient).
@@ -12,18 +12,17 @@ The implementation is organized like ``tools/web/``: a registry of providers
 schema. Adding a provider is a new module under ``tools/email/`` plus a registry
 entry here and (optionally) selecting it in ``config.py``.
 
-The tool is wired in only when both the recipient (``USER_EMAIL``) and the
-selected provider's credentials are configured; otherwise ``setup_email_tools``
-logs a warning and returns an empty bundle, so the session runs without an email
-capability -- the same graceful degradation the browser tool uses.
+The runtime fails fast if the tool is enabled without both ``USER_EMAIL`` and
+the selected provider's credentials. Direct ``setup_email_tools`` calls retain
+their graceful empty-bundle behavior.
 """
 
 from __future__ import annotations
 
 from loguru import logger
 
-from brains.base import ToolBundle
-
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from .base import EmailProvider
 from .config import EMAIL_PROVIDER, USER_EMAIL_ENV, get_user_email
 from .resend_provider import ResendProvider
@@ -91,4 +90,15 @@ async def setup_email_tools() -> ToolBundle:
     )
 
 
-__all__ = ["EMAIL_INSTRUCTION", "email_is_configured", "setup_email_tools"]
+SPEC = ToolSpec(
+    id=ToolId.EMAIL,
+    activation=ToolActivation.CONFIGURED,
+    backend=ToolBackend.LOCAL,
+    setup=setup_email_tools,
+    configurable_name=ToolName.EMAIL,
+    is_configured=email_is_configured,
+    requirement="USER_EMAIL and the email provider's credentials",
+)
+
+
+__all__ = ["EMAIL_INSTRUCTION", "SPEC", "email_is_configured", "setup_email_tools"]

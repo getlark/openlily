@@ -210,7 +210,7 @@ services). Everything else — voice in, LLM, voice out — works offline.
 
 ### 2. Turn tools on or off
 
-Tools are opt-in. The optional generic tools (`browser`, `email`, `x`) are
+Tools are opt-in. The optional generic tools (`browser`, `email`, `notion`, `x`) are
 **off by default** — enable them by name in the `tools` list in `brains.yaml`
 (copy [server/brains.yaml.example](server/brains.yaml.example)). The end-session
 tool is always on. Each enabled tool needs its credentials in `.env`; enabling one
@@ -227,9 +227,11 @@ silently running without the tool).
   Attaches to an already-running browser over CDP rather than launching its own,
   so set `BROWSER_CDP_ENDPOINT` (e.g. `http://localhost:9222`, from Chrome started
   with `--remote-debugging-port=9222`) to enable it; the browser then persists
-  across sessions. Without that variable the browser tools are skipped.
+  across sessions.
 - **Email** (Resend) — sends email to your own address. Needs `USER_EMAIL`,
   `RESEND_API_KEY`, and a verified sender (`EMAIL_FROM`).
+- **Notion** (Notion MCP) — reads and updates the connected workspace. Needs
+  `NOTION_ACCESS_TOKEN`.
 
 Writing your own tool is also a small change — see [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -1,7 +1,7 @@
 """Generic X (Twitter) tool, backed by X's hosted MCP server.
 
-Like the browser tool, this is brain-agnostic: it's layered onto every brain
-centrally in ``bot.py``. It connects to X's hosted Streamable HTTP MCP server
+Like the browser tool, this is brain-agnostic and selected through the central
+registry. It connects to X's hosted Streamable HTTP MCP server
 (``https://api.x.com/mcp``) and exposes its toolset (search posts, look up
 users, trends, news, ...) so the agent can pull live information from X.
 
@@ -10,9 +10,9 @@ Bearer token in the ``Authorization`` header, no local bridge or OAuth login.
 That means read-only, no-user-context access -- fine for search/lookup, but not
 for writes like bookmarking or posting.
 
-The X tool is opt-in: when ``X_APP_BEARER_TOKEN`` is unset it's skipped without
-opening a connection. If the connection fails (bad token, network, X down), the
-tools are skipped and the session runs without them.
+The X tool is opt-in. Missing credentials or connection failures are fail-fast
+startup errors when enabled. Direct ``setup_x_tools`` calls retain their
+graceful empty-bundle behavior.
 """
 
 from __future__ import annotations
@@ -22,14 +22,15 @@ from mcp.client.session_group import StreamableHttpParameters
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
-from brains.base import ToolBundle
-
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     X_APP_BEARER_TOKEN_ENV,
     X_MCP_URL,
     build_x_mcp_headers,
     get_x_bearer_token,
+    is_configured,
 )
 
 # Prompt snippet describing the X capability. Attached to the bundle so the
@@ -100,4 +101,20 @@ async def setup_x_tools() -> ToolBundle:
     )
 
 
-__all__ = ["X_INSTRUCTION", "_connect_x_mcp", "setup_x_tools"]
+SPEC = ToolSpec(
+    id=ToolId.X,
+    activation=ToolActivation.CONFIGURED,
+    backend=ToolBackend.MCP,
+    setup=setup_x_tools,
+    configurable_name=ToolName.X,
+    is_configured=is_configured,
+    requirement="X_APP_BEARER_TOKEN",
+    mcp_connect=_connect_x_mcp,
+    mcp_instructions=lambda: [X_INSTRUCTION],
+    warmup_failure_hint=(
+        "Is X_APP_BEARER_TOKEN a valid App-only Bearer token, and is the network reachable?"
+    ),
+)
+
+
+__all__ = ["SPEC", "X_INSTRUCTION", "_connect_x_mcp", "setup_x_tools"]

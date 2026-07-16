@@ -10,7 +10,7 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import LLMService
 from pipecat.services.mcp_service import MCPClient
 
-from brains.base import ToolBundle
+from .bundle import ToolBundle
 
 
 def prefix_tool_descriptions(tools_schema: ToolsSchema, label: str) -> ToolsSchema:

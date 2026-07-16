@@ -16,9 +16,9 @@ from __future__ import annotations
 from loguru import logger
 from pipecat.adapters.schemas.tools_schema import AdapterType
 
-from brains.base import ToolBundle
-
 from ..base import ToolProvider
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolSpec
 from .config import WEB_SEARCH_PROVIDER
 from .exa import ExaProvider
 
@@ -30,6 +30,7 @@ WEB_SEARCH_INSTRUCTION = (
     "external information. These are fast, so prefer them for quick, "
     "casual lookups if you have multiple options."
 )
+
 
 def hosted_web_search_bundle(search_context_size: str = "low") -> ToolBundle:
     """Bundle a provider-hosted ``web_search`` tool (no local handler).
@@ -97,4 +98,33 @@ def setup_web_tools() -> ToolBundle:
     )
 
 
-__all__ = ["WEB_SEARCH_INSTRUCTION", "hosted_web_search_bundle", "setup_web_tools"]
+async def _setup_hosted_web() -> ToolBundle:
+    return hosted_web_search_bundle()
+
+
+async def _setup_exa_web() -> ToolBundle:
+    return setup_web_tools()
+
+
+HOSTED_WEB_SPEC = ToolSpec(
+    id=ToolId.WEB_HOSTED,
+    activation=ToolActivation.BRAIN,
+    backend=ToolBackend.HOSTED,
+    setup=_setup_hosted_web,
+)
+
+EXA_WEB_SPEC = ToolSpec(
+    id=ToolId.WEB_EXA,
+    activation=ToolActivation.BRAIN,
+    backend=ToolBackend.LOCAL,
+    setup=_setup_exa_web,
+)
+
+
+__all__ = [
+    "EXA_WEB_SPEC",
+    "HOSTED_WEB_SPEC",
+    "WEB_SEARCH_INSTRUCTION",
+    "hosted_web_search_bundle",
+    "setup_web_tools",
+]

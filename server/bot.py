@@ -51,18 +51,19 @@ from pipecat.workers.runner import WorkerRunner
 
 from brains import (
     BrainSpec,
-    ToolBundle,
-    close_tool_bundle,
     get_brain,
-    merge_tool_bundles,
-    register_tool_bundle,
-    tools_schema_from_bundle,
 )
 from idle_keepalive import BotBusyFrame, IdleKeepaliveProcessor
 from observers import ConversationLogObserver
 from prompt import build_system_instruction
 from sound import ReadinessChimeFrame, chime_pcm
-from tools import setup_generic_tools, shutdown_generic_tools, warmup_generic_tools
+from tools.bundle import (
+    ToolBundle,
+    close_tool_bundle,
+    register_tool_bundle,
+    tools_schema_from_bundle,
+)
+from tools.runtime import setup_tools, shutdown_tools, warmup_tools
 from working_sound import WorkingSoundProcessor
 
 load_dotenv(override=True)
@@ -116,12 +117,9 @@ async def _build_pipeline(
     """
     # Set up tools before building the LLM: the system prompt is composed from
     # the active tools' descriptions, and the LLM bakes in that prompt at
-    # construction. The brain's own (often provider-specific) tools plus the
-    # generic tools (e.g. browser) layered onto every brain are merged into one
-    # bundle, whose cleanups tear them all down at session end.
-    brain_bundle = await brain.setup_tools() if brain.setup_tools else ToolBundle()
-    generic_bundle = await setup_generic_tools()
-    tool_bundle = merge_tool_bundles(brain_bundle, generic_bundle)
+    # construction. Each brain declares its provider-specific registry IDs;
+    # always-on and config-enabled tools are added by the tool runtime.
+    tool_bundle = await setup_tools(brain.tools)
 
     system_instruction = build_system_instruction(tool_bundle.instructions)
     services = brain.build(system_instruction)
@@ -300,7 +298,7 @@ async def _warmup() -> None:
     import asyncio
 
     brain = get_brain()
-    await asyncio.gather(_warmup_brain(brain), warmup_generic_tools())
+    await asyncio.gather(_warmup_brain(brain), warmup_tools(brain.tools))
 
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> None:
@@ -330,7 +328,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
         await runner.run()
     finally:
         await close_tool_bundle(tool_bundle)
-        await shutdown_generic_tools()
+        await shutdown_tools()
 
 
 async def bot(runner_args: RunnerArguments):
@@ -386,7 +384,7 @@ async def run_local() -> None:
         logger.info("Local voice bot ready - start talking. Press Ctrl+C to stop.")
         await run_session(handle_sigint=True)
     finally:
-        await shutdown_generic_tools()
+        await shutdown_tools()
 
 
 def _wake_models() -> list[str]:
@@ -456,7 +454,7 @@ def run_wake_gated() -> None:
     except KeyboardInterrupt:
         logger.info("Stopping wake-gated mode")
     finally:
-        loop.run_until_complete(shutdown_generic_tools())
+        loop.run_until_complete(shutdown_tools())
         loop.close()
 
 

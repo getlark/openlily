@@ -18,8 +18,8 @@ Web search uses Meta's hosted search grounding, which -- like OpenAI's -- is a
 Responses-API feature: the model runs the search server-side (billed under
 ``META_API_KEY``, no separate key). The tool is built by the shared
 ``hosted_web_search_bundle`` helper, so this brain doesn't depend on any other.
-The always-on generic tools (email/notion/x, end-session) still apply via
-``setup_generic_tools`` too.
+The config-enabled generic tools (email/notion/x) and always-on end-session tool
+still apply through the central tool runtime.
 """
 
 from __future__ import annotations
@@ -31,9 +31,9 @@ from pipecat.transcriptions.language import Language
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 from env import require_env
-from tools.web import hosted_web_search_bundle
+from tools.contracts import ToolId
 
-from .base import BrainName, BrainServices, BrainSpec, ToolBundle
+from .base import BrainName, BrainServices, BrainSpec
 from .overrides import get_brain_overrides
 
 # Cartesia TTS requires an explicit voice ID (no service default).
@@ -91,14 +91,9 @@ def build(system_instruction: str) -> BrainServices:
     return BrainServices(llm=llm, stt=stt, tts=tts)
 
 
-async def setup_tools() -> ToolBundle:
-    """Attach Meta's hosted ``web_search`` tool (see ``hosted_web_search_bundle``)."""
-    return hosted_web_search_bundle()
-
-
 SPEC = BrainSpec(
     name=BrainName.CARTESIA_META,
     is_realtime=False,
     build=build,
-    setup_tools=setup_tools,
+    tools=(ToolId.WEB_HOSTED,),
 )

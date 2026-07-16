@@ -8,7 +8,9 @@ Otherwise the brain is selected by the ``default_brain`` key in ``brains.yaml``
 
 from __future__ import annotations
 
-from .base import BrainName, ToolName
+from tools.contracts import ToolName
+
+from .base import BrainName
 from .overrides import get_brain_overrides
 
 # Default brain when there's no ``brains.yaml``: Cartesia STT/TTS + OpenAI LLM.
@@ -29,6 +31,6 @@ def get_enabled_tools() -> list[ToolName]:
     """The optional generic tools to enable, from ``tools`` in brains.yaml.
 
     Empty when there's no file, no ``tools`` key, or an empty list -- the
-    always-on session tool is wired in regardless (see ``setup_generic_tools``).
+    always-on session tool is wired in regardless by ``tools.runtime``.
     """
     return get_brain_overrides().tools

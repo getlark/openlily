@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from tools.contracts import ToolName
+
 # Cloud brains are lightweight, so import them eagerly. The local-model brain is
 # NOT imported here: its module pulls in the optional on-device runtimes
 # (mlx-whisper/whisper/kokoro -> torch/CUDA), which a cloud-only install won't
@@ -23,12 +25,6 @@ from .base import (
     BrainName,
     BrainServices,
     BrainSpec,
-    ToolBundle,
-    ToolName,
-    close_tool_bundle,
-    merge_tool_bundles,
-    register_tool_bundle,
-    tools_schema_from_bundle,
 )
 from .config import get_brain_name, get_enabled_tools
 
@@ -78,12 +74,7 @@ __all__ = [
     "BrainName",
     "BrainServices",
     "BrainSpec",
-    "ToolBundle",
     "ToolName",
-    "close_tool_bundle",
     "get_brain",
     "get_enabled_tools",
-    "merge_tool_bundles",
-    "register_tool_bundle",
-    "tools_schema_from_bundle",
 ]

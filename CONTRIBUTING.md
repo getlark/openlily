@@ -94,10 +94,11 @@ Per-brain model/voice overrides flow through `brains.yaml`; each brain reads the
 
 ## Tools
 
-Tools come in two flavors (see [server/tools/\_\_init\_\_.py](server/tools/__init__.py)):
+Every tool is declared once in the central
+[registry](server/tools/registry.py):
 
-- **Per-brain tools** (e.g. `tools/web/`): a brain selects and owns these in its
-  `setup_tools`; they can be provider-specific (e.g. OpenAI's hosted `web_search`).
+- **Per-brain tools** (e.g. hosted or Exa web search): a brain selects these by
+  listing registry IDs in `BrainSpec.tools`.
 - **Generic tools** (e.g. `tools/browser/`, `tools/email/`): brain-agnostic, layered
   onto every brain centrally. The `session` tool is always on; the optional ones
   (`browser`, `email`, `notion`, `x`) are enabled by name via the `tools` list in
@@ -106,21 +107,29 @@ Tools come in two flavors (see [server/tools/\_\_init\_\_.py](server/tools/__ini
 
 A tool provider implements the `ToolProvider` contract in
 [server/tools/base.py](server/tools/base.py): `is_configured()` reports whether its
-credentials are present (so an unconfigured provider is skipped with a warning rather
-than crashing the session), and `create_tools()` returns Pipecat direct functions
-whose name, typed signature, and docstring become the LLM tool schema.
+credentials are present, and `create_tools()` returns Pipecat direct functions whose
+name, typed signature, and docstring become the LLM tool schema. Direct provider
+setup may gracefully return an empty bundle, but a configurable tool explicitly
+enabled in `brains.yaml` is validated by the runtime and fails fast.
 
 To **add a generic tool**:
 
 1. Create `server/tools/<name>/` with a provider implementing `ToolProvider` and a
    `setup_<name>_tools() -> ToolBundle` factory, plus a config-presence check.
    [server/tools/email/](server/tools/email/) is a good multi-provider example.
-2. Add a `ToolName` member in [server/brains/base.py](server/brains/base.py) and
-   register the tool's `setup_*` coroutine and its `is_configured` check in
-   `_OPTIONAL_TOOLS` in [server/tools/\_\_init\_\_.py](server/tools/__init__.py).
-   Users then enable it by adding its name to `tools` in `brains.yaml`.
+2. Add its `ToolId` and optional `ToolName` to
+   [server/tools/contracts.py](server/tools/contracts.py), export a `ToolSpec`
+   beside the implementation, and add that export to the central index in
+   [server/tools/registry.py](server/tools/registry.py). Include MCP connector,
+   instructions, and warmup failure metadata in the module's spec when
+   applicable. Users can then enable configurable tools by adding their name to
+   `tools` in `brains.yaml`.
 
-A `ToolBundle` ([server/brains/base.py](server/brains/base.py)) carries the tools plus
+For a per-brain tool, export its `ToolSpec`, index it centrally, and reference
+its `ToolId` from the relevant brain's `BrainSpec.tools`; the tool entry itself
+does not list compatible brains.
+
+A `ToolBundle` ([server/tools/bundle.py](server/tools/bundle.py)) carries the tools plus
 optional prompt snippets (`instructions`), LLM-dependent `registrations` (e.g. MCP),
 and `cleanups` run at session end. Bundles merge by concatenation, so tools compose.
 

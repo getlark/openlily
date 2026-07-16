@@ -2,7 +2,7 @@
 
 The LLM is the OpenAI Responses API service so the model can use OpenAI's
 hosted ``web_search`` tool (OpenAI runs the search server-side; there is no
-local function callback). See ``setup_tools``.
+local function callback).
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ from pipecat.transcriptions.language import Language
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
 from env import require_env
-from tools.web import hosted_web_search_bundle
+from tools.contracts import ToolId
 
-from .base import BrainName, BrainServices, BrainSpec, ToolBundle
+from .base import BrainName, BrainServices, BrainSpec
 from .overrides import get_brain_overrides
 
 
@@ -85,18 +85,9 @@ def build(system_instruction: str) -> BrainServices:
     return BrainServices(llm=llm, stt=stt, tts=tts)
 
 
-async def setup_tools() -> ToolBundle:
-    """Attach OpenAI's hosted ``web_search`` tool to the LLM context.
-
-    Built by the shared ``hosted_web_search_bundle`` helper so every Responses-API
-    brain wires the same tool the same way (see ``tools/web``).
-    """
-    return hosted_web_search_bundle()
-
-
 SPEC = BrainSpec(
     name=BrainName.OPENAI_STANDARD,
     is_realtime=False,
     build=build,
-    setup_tools=setup_tools,
+    tools=(ToolId.WEB_HOSTED,),
 )

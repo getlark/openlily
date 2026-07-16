@@ -18,9 +18,9 @@ from pipecat.services.openai.realtime.events import (
 from pipecat.services.openai.realtime.llm import OpenAIRealtimeLLMService
 
 from env import require_env
-from tools.web import setup_web_tools
+from tools.contracts import ToolId
 
-from .base import BrainName, BrainServices, BrainSpec, ToolBundle
+from .base import BrainName, BrainServices, BrainSpec
 from .overrides import get_brain_overrides
 
 
@@ -69,18 +69,9 @@ def build(system_instruction: str) -> BrainServices:
     return BrainServices(llm=llm)
 
 
-async def setup_tools() -> ToolBundle:
-    """Build the agent's web search/fetch tools for the session.
-
-    Skipped (an empty bundle) when the web provider isn't configured, so the
-    session still runs without web search.
-    """
-    return setup_web_tools()
-
-
 SPEC = BrainSpec(
     name=BrainName.OPENAI_REALTIME,
     is_realtime=True,
     build=build,
-    setup_tools=setup_tools,
+    tools=(ToolId.WEB_EXA,),
 )

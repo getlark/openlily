@@ -1,22 +1,20 @@
 """Generic browser tool, backed by the Playwright MCP server.
 
-Unlike the per-brain web tools in ``tools/web/``, this is brain-agnostic: it's
-layered onto every brain centrally in ``bot.py``. It launches Microsoft's
+Unlike the per-brain web tools in ``tools/web/``, this is brain-agnostic and
+selected through the central registry. It launches Microsoft's
 Playwright MCP server locally over stdio (``npx @playwright/mcp``) and exposes
 its full default toolset (navigate, click, type, snapshot, ...) so the agent can
 drive a real browser.
 
-The MCP server is a child process started per session and torn down via the
-returned bundle's cleanup. It doesn't launch its own browser: it attaches to an
+The MCP server is a child process warmed once and pooled for the process. It
+doesn't launch its own browser: it attaches to an
 already-running one over the Chrome DevTools Protocol (``--cdp-endpoint``, from
 ``BROWSER_CDP_ENDPOINT``). That browser is started and owned externally, so it
-persists across sessions -- tearing down the per-session MCP server leaves the
-browser open, and the next session reconnects to it.
+persists independently when the MCP pool closes at process shutdown.
 
-Browser tools are opt-in: when ``BROWSER_CDP_ENDPOINT`` is unset they're skipped
-without spawning the server. They also require Node.js/``npx`` on the host; if
-that's missing (or the server fails to connect, e.g. no browser is listening on
-the endpoint), the tools are skipped and the session runs without them.
+Browser tools are opt-in. Enabling them without ``BROWSER_CDP_ENDPOINT``, without
+Node.js/``npx``, or without a listening browser is a fail-fast startup error.
+Direct ``setup_browser_tools`` calls retain their graceful empty-bundle behavior.
 """
 
 from __future__ import annotations
@@ -28,13 +26,14 @@ from mcp import StdioServerParameters
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
-from brains.base import ToolBundle
-
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     BROWSER_CDP_ENDPOINT_ENV,
     BROWSER_MCP_COMMAND,
     build_browser_mcp_args,
+    is_configured,
 )
 
 # Prompt snippet describing the browser capability. Attached to the bundle so
@@ -104,4 +103,26 @@ async def setup_browser_tools() -> ToolBundle:
     )
 
 
-__all__ = ["BROWSER_INSTRUCTION", "_connect_browser_mcp", "setup_browser_tools"]
+SPEC = ToolSpec(
+    id=ToolId.BROWSER,
+    activation=ToolActivation.CONFIGURED,
+    backend=ToolBackend.MCP,
+    setup=setup_browser_tools,
+    configurable_name=ToolName.BROWSER,
+    is_configured=is_configured,
+    requirement="BROWSER_CDP_ENDPOINT",
+    mcp_connect=_connect_browser_mcp,
+    mcp_instructions=lambda: [BROWSER_INSTRUCTION],
+    warmup_failure_hint=(
+        "Is Node.js/npx installed, and is a browser listening on "
+        "BROWSER_CDP_ENDPOINT (Chrome started with --remote-debugging-port)?"
+    ),
+)
+
+
+__all__ = [
+    "BROWSER_INSTRUCTION",
+    "SPEC",
+    "_connect_browser_mcp",
+    "setup_browser_tools",
+]

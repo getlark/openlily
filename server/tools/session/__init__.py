@@ -2,8 +2,7 @@
 
 Brain-agnostic and always on: lets the user dismiss a voice session immediately
 ("stop", "never mind", false wake, etc.) instead of waiting for the idle
-timeout. Layered onto every brain centrally in ``bot.py`` via
-``setup_generic_tools``.
+timeout. Declared always-on in the central tool registry.
 """
 
 from __future__ import annotations
@@ -12,7 +11,8 @@ from loguru import logger
 from pipecat.frames.frames import FunctionCallResultProperties
 from pipecat.services.llm_service import FunctionCallParams
 
-from brains.base import ToolBundle
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolSpec
 
 END_SESSION_INSTRUCTION = (
     "You can end the voice session immediately. Call end_session when the user "
@@ -54,4 +54,12 @@ async def setup_session_tools() -> ToolBundle:
     )
 
 
-__all__ = ["END_SESSION_INSTRUCTION", "end_session", "setup_session_tools"]
+SPEC = ToolSpec(
+    id=ToolId.SESSION,
+    activation=ToolActivation.ALWAYS,
+    backend=ToolBackend.LOCAL,
+    setup=setup_session_tools,
+)
+
+
+__all__ = ["END_SESSION_INSTRUCTION", "SPEC", "end_session", "setup_session_tools"]

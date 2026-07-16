@@ -10,8 +10,8 @@ in ``.env``). Pages and databases must be connected to that integration in
 Notion's settings before the agent can access them.
 
 The Notion tool is opt-in via ``brains.yaml``; enabling it without
-``NOTION_ACCESS_TOKEN`` is a startup error. If the MCP server fails to start
-(missing Node.js/npx, bad token), the tools are skipped and the session continues.
+``NOTION_ACCESS_TOKEN`` is a startup error. MCP startup failures (missing
+Node.js/npx, bad token) also abort startup with an actionable error.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ from mcp import StdioServerParameters
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.mcp_service import MCPClient
 
-from brains.base import ToolBundle
-
+from ..bundle import ToolBundle
+from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from ..mcp_bundle import mcp_tool_bundle, prefix_tool_descriptions
 from .config import (
     NOTION_ACCESS_TOKEN_ENV,
@@ -31,6 +31,7 @@ from .config import (
     NOTION_MCP_TOOLS_FILTER,
     build_notion_mcp_env,
     get_notion_access_token,
+    is_configured,
 )
 
 # Prompt snippet describing the Notion capability. Attached to the bundle so the
@@ -66,9 +67,9 @@ async def _connect_notion_mcp() -> tuple[MCPClient, ToolsSchema]:
 async def setup_notion_tools() -> ToolBundle:
     """Start the Notion MCP server and bundle its tools.
 
-    Called only when ``notion`` is listed in ``brains.yaml``; ``setup_generic_tools``
-    already fail-fast if ``NOTION_ACCESS_TOKEN`` is missing, so this raises if the
-    token is absent when invoked directly (e.g. tests).
+    The registry runtime normally warms and reuses this connection after
+    fail-fast configuration validation. This direct setup remains available for
+    isolated use and tests.
 
     Discovers tool schemas up front (so the bundle can carry them and its prompt
     snippet before the LLM exists), and defers registering handlers onto the LLM
@@ -105,4 +106,25 @@ async def setup_notion_tools() -> ToolBundle:
     )
 
 
-__all__ = ["NOTION_INSTRUCTION", "_connect_notion_mcp", "setup_notion_tools"]
+SPEC = ToolSpec(
+    id=ToolId.NOTION,
+    activation=ToolActivation.CONFIGURED,
+    backend=ToolBackend.MCP,
+    setup=setup_notion_tools,
+    configurable_name=ToolName.NOTION,
+    is_configured=is_configured,
+    requirement="NOTION_ACCESS_TOKEN",
+    mcp_connect=_connect_notion_mcp,
+    mcp_instructions=lambda: [NOTION_INSTRUCTION],
+    warmup_failure_hint=(
+        "Is Node.js/npx installed, and is NOTION_ACCESS_TOKEN a valid integration token?"
+    ),
+)
+
+
+__all__ = [
+    "NOTION_INSTRUCTION",
+    "SPEC",
+    "_connect_notion_mcp",
+    "setup_notion_tools",
+]

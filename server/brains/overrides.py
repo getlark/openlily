@@ -20,7 +20,9 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from .base import BrainName, ToolName
+from tools.contracts import ToolName
+
+from .base import BrainName
 
 # server/brains/overrides.py -> server/brains.yaml (one dir up from this package).
 _OVERRIDE_PATH = Path(__file__).resolve().parents[1] / "brains.yaml"
