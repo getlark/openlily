@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from tools.contracts import ToolId
+from openlily.tools.contracts import ToolId
 
 
 class BrainName(StrEnum):

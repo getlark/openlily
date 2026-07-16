@@ -17,8 +17,8 @@ from pipecat.services.openai.realtime.events import (
 )
 from pipecat.services.openai.realtime.llm import OpenAIRealtimeLLMService
 
-from env import require_env
-from tools.contracts import ToolId
+from openlily.env import require_env
+from openlily.tools.contracts import ToolId
 
 from .base import BrainName, BrainServices, BrainSpec
 from .overrides import get_brain_overrides

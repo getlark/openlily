@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from brains import get_brain
-from brains.base import BrainName
-from brains.config import DEFAULT_BRAIN, get_brain_name
+from openlily.brains import get_brain
+from openlily.brains.base import BrainName
+from openlily.brains.config import DEFAULT_BRAIN, get_brain_name
 
 
 def test_default_when_no_file(no_brains_yaml: Path) -> None:

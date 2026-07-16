@@ -13,8 +13,8 @@ from pipecat.services.openai.tts import OpenAITTSService
 from pipecat.transcriptions.language import Language
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
-from env import require_env
-from tools.contracts import ToolId
+from openlily.env import require_env
+from openlily.tools.contracts import ToolId
 
 from .base import BrainName, BrainServices, BrainSpec
 from .overrides import get_brain_overrides

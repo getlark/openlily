@@ -30,6 +30,9 @@ You can also run it on other standalone devices like raspberry pi, mac mini, etc
 - **On-device turn-taking** — Silero VAD + Smart Turn v3 run locally to decide
   when you've started and stopped talking.
 - **Tools** — web search, real browser automation, and email, each opt-in. You can write custom tools easily.
+- **Usable as a library** — the same brains, tools, and audio cues ship as an
+  installable `openlily` package you can drop into your own Pipecat agent and deploy
+  to Pipecat Cloud. See [Use it as a library](#use-it-as-a-library).
 
 ## Setup
 
@@ -284,6 +287,37 @@ turn, without watching the terminal:
   while it thinks.
 - **The spoken reply.** Once the LLM is done, the blips stop and you hear the
   answer through text-to-speech.
+
+## Use it as a library
+
+Beyond the local CLI, openlily is an installable package you can drop into your own
+Pipecat agent — reusing the brains, tools, and the audio cues above — and deploy to
+Pipecat Cloud. Everything is modular: the "working" cue and readiness chime are
+optional, the prompt/observers/VAD are overridable, and you can add your own brain
+or tool without forking.
+
+```bash
+pip install openlily        # from this repo: pip install ./server
+```
+
+```python
+import openlily
+
+config = openlily.AgentConfig(
+    brain="cartesia_openai",      # a built-in name, a BrainName, or your own BrainSpec
+    enabled_tools=["email"],      # optional tools (each needs its credentials in the env)
+    working_sound=True,           # set False to drop the soft "thinking" cue
+    readiness_chime=True,         # set False to drop the startup ding
+)
+await openlily.warmup(config)
+agent = await openlily.create_agent(my_transport, config)
+# add agent.worker to a pipecat WorkerRunner and run it
+```
+
+Add a brain or tool with `openlily.register_brain` / `openlily.register_tool`, or
+import the individual processors (`WorkingSoundProcessor`, `IdleKeepaliveProcessor`,
+`chime_pcm`, ...) and compose your own pipeline. Runnable examples — including a
+Pipecat Cloud `bot(runner_args)` entry point — live in [examples/](examples/).
 
 ## Getting help
 

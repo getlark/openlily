@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from brains import overrides
+from openlily.brains import overrides
 
 
 @pytest.fixture(autouse=True)

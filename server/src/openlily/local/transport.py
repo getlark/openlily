@@ -53,8 +53,8 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 
-from env import env_flag
-from sound import ReadinessChimeFrame
+from openlily.env import env_flag
+from openlily.sound import ReadinessChimeFrame
 
 # The bot's mic capture rate. 16 kHz is what OpenAI STT expects and is plenty
 # for speech; the APM processes capture at this rate.
@@ -359,7 +359,7 @@ class _BargeInInputTransport(_APMInputTransport):
         await super().start(frame)
         if self._detector is None:
             # Imported lazily so a pure half-duplex run never loads openWakeWord.
-            from barge_in import BargeInDetector
+            from openlily.local.barge_in import BargeInDetector
 
             self._detector = BargeInDetector(on_detect=self._trigger_barge_in)
             self._detector.start()

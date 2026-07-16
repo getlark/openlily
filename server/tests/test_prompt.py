@@ -1,10 +1,10 @@
-"""Tests for the system prompt builder (``server/prompt.py``)."""
+"""Tests for the system prompt builder (``openlily/prompt.py``)."""
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from prompt import build_system_instruction
+from openlily.prompt import build_system_instruction
 
 
 def test_no_tools_leaves_no_bullets_or_blank_line() -> None:

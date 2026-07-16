@@ -14,18 +14,23 @@ silently running with the wrong config.
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from tools.contracts import ToolName
+from openlily.tools.contracts import ToolName
 
 from .base import BrainName
 
-# server/brains/overrides.py -> server/brains.yaml (one dir up from this package).
-_OVERRIDE_PATH = Path(__file__).resolve().parents[1] / "brains.yaml"
+# Where the optional ``brains.yaml`` lives. Defaults to ``brains.yaml`` in the
+# current working directory (the local CLI is run from ``server/``, where the
+# file sits), and is overridable via ``OPENLILY_BRAINS_YAML`` so a library
+# consumer can point it anywhere -- or ignore it entirely and configure brains
+# programmatically. Tests monkeypatch this attribute directly.
+_OVERRIDE_PATH = Path(os.getenv("OPENLILY_BRAINS_YAML", "brains.yaml"))
 
 
 class _Service(BaseModel):

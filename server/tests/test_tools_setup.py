@@ -9,17 +9,17 @@ from __future__ import annotations
 
 import pytest
 
-import tools.email as email_pkg
-import tools.runtime as tools_runtime
-import tools.web as web_pkg
-from tools.bundle import ToolBundle
-from tools.contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
-from tools.email import setup_email_tools
-from tools.email.config import USER_EMAIL_ENV
-from tools.email.resend_provider import ResendProvider
-from tools.runtime import setup_tools
-from tools.web import WEB_SEARCH_INSTRUCTION, setup_web_tools
-from tools.web.exa import ExaProvider
+import openlily.tools.email as email_pkg
+import openlily.tools.runtime as tools_runtime
+import openlily.tools.web as web_pkg
+from openlily.tools.bundle import ToolBundle
+from openlily.tools.contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
+from openlily.tools.email import setup_email_tools
+from openlily.tools.email.config import USER_EMAIL_ENV
+from openlily.tools.email.resend_provider import ResendProvider
+from openlily.tools.runtime import setup_tools
+from openlily.tools.web import WEB_SEARCH_INSTRUCTION, setup_web_tools
+from openlily.tools.web.exa import ExaProvider
 
 
 async def _noop() -> None:  # a stand-in "tool" callable
@@ -84,9 +84,8 @@ async def test_email_unknown_provider_raises(monkeypatch: pytest.MonkeyPatch) ->
         await setup_email_tools()
 
 
-async def test_generic_tools_always_includes_session(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_generic_tools_always_includes_session() -> None:
     # No optional tools enabled -> the always-on session tool is still wired in.
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [])
     bundle = await setup_tools()
     assert bundle.standard_tools  # session's end_session tool
     assert bundle.instructions
@@ -105,10 +104,9 @@ async def test_generic_tools_enabled_and_configured_wires(monkeypatch: pytest.Mo
         is_configured=lambda: True,
         requirement="email credentials",
     )
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [ToolName.EMAIL])
     monkeypatch.setattr(tools_runtime, "get_configurable_tool", lambda name: fake_spec)
 
-    bundle = await setup_tools()
+    bundle = await setup_tools(enabled_tool_names=[ToolName.EMAIL])
 
     assert _noop in bundle.standard_tools  # the enabled tool's tool
     assert "X capability" in bundle.instructions
@@ -129,11 +127,10 @@ async def test_generic_tools_enabled_but_unconfigured_raises(
         is_configured=lambda: False,
         requirement="EMAIL_TEST_CREDENTIALS",
     )
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [ToolName.EMAIL])
     monkeypatch.setattr(tools_runtime, "get_configurable_tool", lambda name: fake_spec)
 
     with pytest.raises(RuntimeError) as exc:
-        await setup_tools()
+        await setup_tools(enabled_tool_names=[ToolName.EMAIL])
     assert "EMAIL_TEST_CREDENTIALS" in str(exc.value)
 
 
@@ -150,7 +147,6 @@ async def test_brain_declared_tool_is_resolved_from_registry(
         setup=fake_setup,
     )
     monkeypatch.setattr(tools_runtime, "always_on_tools", lambda: ())
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [])
     monkeypatch.setattr(tools_runtime, "get_tool_spec", lambda tool_id: fake_spec)
 
     bundle = await tools_runtime.setup_tools((ToolId.WEB_HOSTED,))
@@ -184,7 +180,6 @@ async def test_enabled_mcp_tool_requires_warmup(monkeypatch: pytest.MonkeyPatch)
             return False
 
     monkeypatch.setattr(tools_runtime, "always_on_tools", lambda: ())
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [ToolName.X])
     monkeypatch.setattr(tools_runtime, "get_configurable_tool", lambda name: fake_spec)
     monkeypatch.setattr(
         tools_runtime.MCPToolsPool,
@@ -193,7 +188,7 @@ async def test_enabled_mcp_tool_requires_warmup(monkeypatch: pytest.MonkeyPatch)
     )
 
     with pytest.raises(RuntimeError, match="warmup_tools"):
-        await tools_runtime.setup_tools()
+        await tools_runtime.setup_tools(enabled_tool_names=[ToolName.X])
 
 
 async def test_brain_declared_mcp_tool_is_warmed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -220,7 +215,6 @@ async def test_brain_declared_mcp_tool_is_warmed(monkeypatch: pytest.MonkeyPatch
             self.specs = specs
 
     pool = _RecordingPool()
-    monkeypatch.setattr(tools_runtime, "get_enabled_tools", lambda: [])
     monkeypatch.setattr(tools_runtime, "get_tool_spec", lambda tool_id: fake_spec)
     monkeypatch.setattr(
         tools_runtime.MCPToolsPool,

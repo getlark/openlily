@@ -9,15 +9,15 @@ from unittest.mock import AsyncMock
 import pytest
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
-from tools.bundle import ToolBundle
-from tools.contracts import (
+from openlily.tools.bundle import ToolBundle
+from openlily.tools.contracts import (
     ToolActivation,
     ToolBackend,
     ToolId,
     ToolName,
     ToolSpec,
 )
-from tools.mcp_pool import MCPToolsPool
+from openlily.tools.mcp_pool import MCPToolsPool
 
 
 async def _empty_setup() -> ToolBundle:

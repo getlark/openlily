@@ -1,16 +1,18 @@
-"""Tests for the env-parsing helpers in ``server/bot.py``.
+"""Tests for the CLI env-parsing helpers (``openlily/cli.py``).
 
-Importing ``bot`` pulls in Pipecat and runs ``load_dotenv`` at import time; that's
-fine here since deps are installed and the helpers read ``os.getenv`` at call
-time, so ``monkeypatch.setenv`` after import still takes effect.
+Importing ``openlily.cli`` pulls in Pipecat (and runs ``load_dotenv`` when the
+runner is imported); that's fine here since deps are installed and the helpers
+read ``os.getenv`` at call time, so ``monkeypatch.setenv`` after import still
+takes effect.
 """
 
 from __future__ import annotations
 
 import pytest
 
-import bot
-from bot import DEFAULT_IDLE_TIMEOUT_SECS, _idle_timeout_secs, _wake_models
+from openlily.agent import build_worker
+from openlily.cli import _idle_timeout_secs, _wake_models
+from openlily.config import DEFAULT_IDLE_TIMEOUT_SECS
 
 
 def test_idle_timeout_default_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,6 +45,6 @@ def test_wake_models_splits_and_trims(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _wake_models() == ["hey_jarvis", "alexa"]
 
 
-def test_bot_module_imports() -> None:
-    # Smoke check that the entry-point module imports without error.
-    assert hasattr(bot, "_build_worker")
+def test_factory_exposes_build_worker() -> None:
+    # Smoke check that the factory entry point is importable.
+    assert callable(build_worker)
