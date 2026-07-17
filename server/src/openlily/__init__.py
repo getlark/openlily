@@ -72,7 +72,7 @@ from openlily.tools.registry import register_tool
 from openlily.tools.runtime import setup_tools, shutdown_tools, warmup_tools
 from openlily.working_sound import WorkingSoundProcessor
 
-__version__ = "0.1.0"
+__version__ = "0.4.0"
 
 __all__ = [
     # Factory / config

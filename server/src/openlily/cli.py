@@ -118,7 +118,14 @@ async def run_session(*, handle_sigint: bool) -> None:
     The bot waits for the user to speak first (no kickoff greeting). Factored out
     so the wake-gated loop can run many sessions in one process.
     """
-    from openlily.local import build_local_transport, close_local_transport
+    try:
+        from openlily.local import build_local_transport, close_local_transport
+    except ImportError as e:
+        raise SystemExit(
+            "The local voice CLI needs the optional 'local' dependencies "
+            "(mic transport, AEC, wake word), which aren't installed. Add them "
+            "with `uv sync --extra local` (or `pip install 'openlily[local]'`)."
+        ) from e
 
     config = build_agent_config()
     brain = resolve_brain(config)
@@ -178,7 +185,14 @@ def run_wake_gated() -> None:
     whose anyio task groups are bound to the loop that created them, stay valid
     and reusable across sessions.
     """
-    from openlily.local.wakeword import PyAudioSource, WakeWordEngine, WakeWordListener
+    try:
+        from openlily.local.wakeword import PyAudioSource, WakeWordEngine, WakeWordListener
+    except ImportError as e:
+        raise SystemExit(
+            "Wake-word mode needs the optional 'local' dependencies "
+            "(openWakeWord, mic transport), which aren't installed. Add them "
+            "with `uv sync --extra local` (or `pip install 'openlily[local]'`)."
+        ) from e
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

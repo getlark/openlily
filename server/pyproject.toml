@@ -4,38 +4,55 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openlily"
-version = "0.3.0"
+version = "0.4.0"
 description = "Reusable Pipecat voice-agent toolkit (brains, tools, and audio cues)"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    # Cloud brains + the local-audio mic CLI and wake-word mode. Deliberately
-    # omits the local-*model* runtimes (mlx-whisper/whisper/kokoro) — those live
-    # in the `local-models` extra below so a cloud-only install stays lean and
-    # never pulls torch/CUDA. `local` here is pipecat's *local-audio* extra
-    # (PyAudio for the mic transport), which the default run mode needs even with
-    # a cloud brain — unrelated to local models.
-    "pipecat-ai[cartesia,local,mcp,openai,runner,silero,webrtc]>=1.4.0",
-    # Standalone WebRTC Audio Processing Module (AEC + noise suppression + AGC)
-    # for the local-audio CLI run. Only rtc.AudioProcessingModule is used; no
-    # LiveKit room/server/credentials are involved.
-    "livekit>=1.0",
-    # Exa Python SDK for the web search tools (tools/web/).
-    "exa-py>=2.14.0",
-    # Wake-word detection for the --mode local-with-wake-word run mode (wakeword/).
-    # onnxruntime is openWakeWord's default inference backend. PyAudio (the wake
-    # listener's mic backend) already comes with pipecat-ai[local] above.
-    "openwakeword~=0.6",
-    "onnxruntime",
-    "resend>=2.30.1",
-    # Render the Markdown email body to HTML in tools/email/resend_provider.py.
-    # Ships transitively with pipecat-ai, but we import it directly, so pin it.
-    "markdown>=3.7",
+    # Core library: cloud brains (STT/LLM/TTS harnesses), the MCP tool runtime,
+    # and the dev-runner/WebRTC transport. Deliberately omits pipecat's *local*
+    # (PyAudio mic) extra and the local-*model* runtimes -- those are only needed
+    # by the terminal CLI and the on-device brain, so they live in the `local`
+    # and `local-models` extras below to keep a plain library install lean (never
+    # pulls PyAudio, LiveKit, wake-word, or torch/CUDA on `import openlily`).
+    "pipecat-ai[cartesia,mcp,openai,runner,silero,webrtc]>=1.4.0",
     # Parse the optional brains.yaml model/voice overrides (brains/overrides.py).
+    # Lightweight, pure-Python, and imported on the core path, so kept in base.
     "pyyaml>=6",
 ]
 
 [project.optional-dependencies]
+# Local terminal CLI: the gated local-audio transport (mic/speakers) and the
+# optional wake-word run mode. Only needed to run `openlily` on the machine's
+# own audio; a library consumer wiring their own transport never needs these.
+# - pipecat-ai[local] provides PyAudio for the mic transport (and the wake
+#   listener's mic backend).
+# - livekit is used only for its standalone WebRTC Audio Processing Module
+#   (AEC + noise suppression + AGC); no LiveKit room/server/credentials.
+# - openwakeword (+ onnxruntime, its default inference backend) powers the
+#   `--mode local-with-wake-word` run mode.
+local = [
+    "pipecat-ai[local]>=1.4.0",
+    "livekit>=1.0",
+    "openwakeword~=0.6",
+    "onnxruntime",
+]
+
+# Exa-backed web_search / web_fetch tools (tools/web/). Only needed when a brain
+# uses the Exa tool; imported lazily so the base install skips the SDK.
+web = [
+    "exa-py>=2.14.0",
+]
+
+# Resend-backed email tool (tools/email/). Only needed when the email tool is
+# enabled; imported lazily so the base install skips these.
+# - resend is the email API client.
+# - markdown renders the email body to HTML (resend_provider.py).
+email = [
+    "resend>=2.30.1",
+    "markdown>=3.7",
+]
+
 # On-device model runtimes for the `local_whisper_ollama_kokoro` brain. Kept out
 # of the base install because these are heavy: `mlx-whisper` drags in torch (and,
 # on Linux, the whole nvidia-* CUDA stack), `whisper` adds faster-whisper, and
@@ -46,6 +63,11 @@ dependencies = [
 # only uses the MLX subclass.
 local-models = [
     "pipecat-ai[kokoro,mlx-whisper,whisper]>=1.4.0",
+]
+
+# Convenience meta-extra: everything (terminal CLI, all tools, on-device models).
+all = [
+    "openlily[local,web,email,local-models]",
 ]
 
 # Console entry point mirrors `uv run bot.py`: `openlily`, `openlily --mode local`,

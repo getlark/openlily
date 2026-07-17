@@ -309,12 +309,26 @@ pip install "openlily @ git+https://github.com/getlark/openlily.git@v0.1.0#subdi
 uv add "git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
 ```
 
-The on-device brain (`local_whisper_ollama_kokoro`) needs its heavy model runtimes,
-which are an optional extra:
+The base install is deliberately lean — cloud brains, the tool runtime, and the
+dev-runner/WebRTC transport — so `import openlily` never pulls in PyAudio, LiveKit,
+wake-word, the email/web tool SDKs, or torch/CUDA. Add extras only for what you use:
+
+| Extra | Adds | When you need it |
+| --- | --- | --- |
+| `local` | PyAudio mic transport, LiveKit AEC, openWakeWord | Running the terminal CLI (`openlily --mode local[-with-wake-word]`) |
+| `web` | `exa-py` | The Exa-backed `web_search` / `web_fetch` tools |
+| `email` | `resend`, `markdown` | The email tool |
+| `local-models` | on-device Whisper/Kokoro runtimes (torch/CUDA) | The `local_whisper_ollama_kokoro` brain |
+| `all` | everything above | — |
+
+Extras compose, e.g. install the CLI with web search and email:
 
 ```bash
-pip install "openlily[local-models] @ git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
+pip install "openlily[local,web,email] @ git+https://github.com/getlark/openlily.git@v0.1.0#subdirectory=server"
 ```
+
+The optional tool/brain deps are imported lazily, so a missing extra only errors
+(with an "install the extra" message) when you actually enable that tool or brain.
 
 Pin to a tag (`@v0.1.0`) for reproducible builds. To move to a newer release, bump
 the tag and reinstall:

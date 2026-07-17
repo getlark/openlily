@@ -19,13 +19,14 @@ their graceful empty-bundle behavior.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from loguru import logger
 
 from ..bundle import ToolBundle
 from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from .base import EmailProvider
 from .config import EMAIL_PROVIDER, USER_EMAIL_ENV, get_user_email
-from .resend_provider import ResendProvider
 
 # Prompt snippet describing the email capability. Attached to the bundle so the
 # system prompt mentions email only when the tool is actually wired in. Mirrors
@@ -37,19 +38,42 @@ EMAIL_INSTRUCTION = (
     "Format the email nicely when possible (like in markdown format)."
 )
 
-# Registry of available providers. Add new ones here; select via config.py.
-_PROVIDERS: dict[str, type[EmailProvider]] = {
-    "resend": ResendProvider,
+def _load_resend_provider() -> type[EmailProvider]:
+    """Import the Resend provider lazily, with an actionable error if its optional
+    dependencies (``resend``, ``markdown``) aren't installed.
+
+    They live in the ``email`` extra (see ``pyproject.toml``), so a base install
+    won't have them. Importing here (not at module load) keeps ``import openlily``
+    working without them, and turns a missing dep into a clear "install the extra"
+    message rather than a raw ``ModuleNotFoundError``.
+    """
+    try:
+        from .resend_provider import ResendProvider
+    except ImportError as e:
+        raise RuntimeError(
+            "The email tool needs the optional 'email' dependencies, which "
+            "aren't installed. Add them with `uv sync --extra email` (or "
+            "`pip install 'openlily[email]'`) and relaunch."
+        ) from e
+    return ResendProvider
+
+
+# Registry of available providers -> a loader that imports and returns the
+# provider class on demand. Add new ones here; select via config.py.
+_PROVIDER_LOADERS: dict[str, Callable[[], type[EmailProvider]]] = {
+    "resend": _load_resend_provider,
 }
 
 
 def _provider_cls() -> type[EmailProvider]:
     try:
-        return _PROVIDERS[EMAIL_PROVIDER]
+        loader = _PROVIDER_LOADERS[EMAIL_PROVIDER]
     except KeyError:
         raise ValueError(
-            f"Unknown email provider {EMAIL_PROVIDER!r}; available: {sorted(_PROVIDERS)}"
+            f"Unknown email provider {EMAIL_PROVIDER!r}; "
+            f"available: {sorted(_PROVIDER_LOADERS)}"
         )
+    return loader()
 
 
 def email_is_configured() -> bool:

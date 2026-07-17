@@ -13,6 +13,8 @@ the email tool uses.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from loguru import logger
 from pipecat.adapters.schemas.tools_schema import AdapterType
 
@@ -20,7 +22,6 @@ from ..base import ToolProvider
 from ..bundle import ToolBundle
 from ..contracts import ToolActivation, ToolBackend, ToolId, ToolSpec
 from .config import WEB_SEARCH_PROVIDER
-from .exa import ExaProvider
 
 # Prompt snippet describing the web search/fetch capability. Provider-agnostic
 # (the model just needs to know the capability exists), so both the hosted
@@ -58,19 +59,42 @@ def hosted_web_search_bundle(search_context_size: str = "low") -> ToolBundle:
     )
 
 
-# Registry of available providers. Add new ones here; select via config.py.
-_PROVIDERS: dict[str, type[ToolProvider]] = {
-    "exa": ExaProvider,
+def _load_exa_provider() -> type[ToolProvider]:
+    """Import the Exa provider lazily, with an actionable error if its optional
+    dependency (``exa-py``) isn't installed.
+
+    The Exa SDK lives in the ``web`` extra (see ``pyproject.toml``), so a base
+    install won't have it. Importing here (not at module load) keeps
+    ``import openlily`` working without ``exa-py``, and turns a missing dep into
+    a clear "install the extra" message rather than a raw ``ModuleNotFoundError``.
+    """
+    try:
+        from .exa import ExaProvider
+    except ImportError as e:
+        raise RuntimeError(
+            "The Exa web search tool needs the optional 'web' dependency, which "
+            "isn't installed. Add it with `uv sync --extra web` (or "
+            "`pip install 'openlily[web]'`) and relaunch."
+        ) from e
+    return ExaProvider
+
+
+# Registry of available providers -> a loader that imports and returns the
+# provider class on demand. Add new ones here; select via config.py.
+_PROVIDER_LOADERS: dict[str, Callable[[], type[ToolProvider]]] = {
+    "exa": _load_exa_provider,
 }
 
 
 def _provider_cls() -> type[ToolProvider]:
     try:
-        return _PROVIDERS[WEB_SEARCH_PROVIDER]
+        loader = _PROVIDER_LOADERS[WEB_SEARCH_PROVIDER]
     except KeyError:
         raise ValueError(
-            f"Unknown web search provider {WEB_SEARCH_PROVIDER!r}; available: {sorted(_PROVIDERS)}"
+            f"Unknown web search provider {WEB_SEARCH_PROVIDER!r}; "
+            f"available: {sorted(_PROVIDER_LOADERS)}"
         )
+    return loader()
 
 
 def setup_web_tools() -> ToolBundle:

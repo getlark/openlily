@@ -2269,22 +2269,38 @@ wheels = [
 
 [[package]]
 name = "openlily"
-version = "0.1.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
+    { name = "pipecat-ai", extra = ["mcp", "runner", "webrtc"] },
+    { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+all = [
     { name = "exa-py" },
     { name = "livekit" },
     { name = "markdown" },
     { name = "onnxruntime" },
     { name = "openwakeword" },
-    { name = "pipecat-ai", extra = ["local", "mcp", "runner", "webrtc"] },
-    { name = "pyyaml" },
+    { name = "pipecat-ai", extra = ["kokoro", "local", "mlx-whisper", "whisper"] },
     { name = "resend" },
 ]
-
-[package.optional-dependencies]
+email = [
+    { name = "markdown" },
+    { name = "resend" },
+]
+local = [
+    { name = "livekit" },
+    { name = "onnxruntime" },
+    { name = "openwakeword" },
+    { name = "pipecat-ai", extra = ["local"] },
+]
 local-models = [
     { name = "pipecat-ai", extra = ["kokoro", "mlx-whisper", "whisper"] },
+]
+web = [
+    { name = "exa-py" },
 ]
 
 [package.dev-dependencies]
@@ -2297,17 +2313,19 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "exa-py", specifier = ">=2.14.0" },
-    { name = "livekit", specifier = ">=1.0" },
-    { name = "markdown", specifier = ">=3.7" },
-    { name = "onnxruntime" },
-    { name = "openwakeword", specifier = "~=0.6" },
-    { name = "pipecat-ai", extras = ["cartesia", "local", "mcp", "openai", "runner", "silero", "webrtc"], specifier = ">=1.4.0" },
+    { name = "exa-py", marker = "extra == 'web'", specifier = ">=2.14.0" },
+    { name = "livekit", marker = "extra == 'local'", specifier = ">=1.0" },
+    { name = "markdown", marker = "extra == 'email'", specifier = ">=3.7" },
+    { name = "onnxruntime", marker = "extra == 'local'" },
+    { name = "openlily", extras = ["local", "web", "email", "local-models"], marker = "extra == 'all'" },
+    { name = "openwakeword", marker = "extra == 'local'", specifier = "~=0.6" },
+    { name = "pipecat-ai", extras = ["cartesia", "mcp", "openai", "runner", "silero", "webrtc"], specifier = ">=1.4.0" },
     { name = "pipecat-ai", extras = ["kokoro", "mlx-whisper", "whisper"], marker = "extra == 'local-models'", specifier = ">=1.4.0" },
+    { name = "pipecat-ai", extras = ["local"], marker = "extra == 'local'", specifier = ">=1.4.0" },
     { name = "pyyaml", specifier = ">=6" },
-    { name = "resend", specifier = ">=2.30.1" },
+    { name = "resend", marker = "extra == 'email'", specifier = ">=2.30.1" },
 ]
-provides-extras = ["local-models"]
+provides-extras = ["local", "web", "email", "local-models", "all"]
 
 [package.metadata.requires-dev]
 dev = [
