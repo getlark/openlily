@@ -74,13 +74,15 @@ class AgentConfig:
     # Play a short readiness chime the moment the pipeline can accept audio.
     readiness_chime: bool = True
 
-    # Seconds of silence before the session ends itself. ``None`` disables the
-    # idle timeout entirely: the session is never ended on silence and runs until
-    # something else stops it. (The idle keep-alive heartbeat that protects long
-    # "thinking" turns from this timeout is always on when a timeout is set -- it's
-    # a correctness fix, not a flourish -- and is skipped when the timeout is
-    # ``None`` since it exists only to protect the timeout.)
-    idle_timeout_secs: float | None = DEFAULT_IDLE_TIMEOUT_SECS
+    # Seconds of silence before the session ends itself. Defaults to ``None``,
+    # which disables the idle timeout entirely: the session is never ended on
+    # silence and runs until something else stops it. Set a float (e.g.
+    # ``DEFAULT_IDLE_TIMEOUT_SECS``) to end the session after that much silence.
+    # (The idle keep-alive heartbeat that protects long "thinking" turns from this
+    # timeout is on whenever a timeout is set -- it's a correctness fix, not a
+    # flourish -- and is skipped when the timeout is ``None`` since it exists only
+    # to protect the timeout.)
+    idle_timeout_secs: float | None = None
 
     # System prompt. ``None`` uses ``build_system_instruction`` (base rules +
     # active tools + date). Pass a string to fully override it, or a callable
