@@ -30,6 +30,14 @@ def test_idle_timeout_falls_back_on_garbage(monkeypatch: pytest.MonkeyPatch) -> 
     assert _idle_timeout_secs() == DEFAULT_IDLE_TIMEOUT_SECS
 
 
+@pytest.mark.parametrize("raw", ["0", "0.0", "-1", "-12.5"])
+def test_idle_timeout_disabled_when_non_positive(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv("IDLE_TIMEOUT_SECS", raw)
+    assert _idle_timeout_secs() is None
+
+
 def test_wake_models_default_when_unset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("WAKE_MODELS", raising=False)
     assert _wake_models() == ["alexa"]

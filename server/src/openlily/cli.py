@@ -33,18 +33,24 @@ from openlily.tools.bundle import close_tool_bundle
 from openlily.tools.runtime import shutdown_tools
 
 
-def _idle_timeout_secs() -> float:
-    """Resolve the idle timeout (seconds) from the environment, else the default."""
+def _idle_timeout_secs() -> float | None:
+    """Resolve the idle timeout (seconds) from the environment, else the default.
+
+    A value of ``0`` (or any non-positive number) disables the idle timeout
+    entirely -- the session is never ended on silence -- which we signal with
+    ``None``.
+    """
     raw = os.getenv("IDLE_TIMEOUT_SECS")
     if raw is None:
         return DEFAULT_IDLE_TIMEOUT_SECS
     try:
-        return float(raw)
+        value = float(raw)
     except ValueError:
         logger.warning(
             f"Invalid IDLE_TIMEOUT_SECS={raw!r}; using default {DEFAULT_IDLE_TIMEOUT_SECS}s"
         )
         return DEFAULT_IDLE_TIMEOUT_SECS
+    return value if value > 0 else None
 
 
 def build_agent_config() -> AgentConfig:

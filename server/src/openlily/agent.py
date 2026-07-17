@@ -137,15 +137,20 @@ async def build_pipeline(
     )
 
     # Idle keep-alive heartbeat so the bot's silent "thinking" time isn't counted
-    # as idle and doesn't trip the session's idle timeout mid-turn. Always on (a
-    # correctness fix, not a flourish); BotBusyFrame is registered in the worker's
-    # idle_timeout_frames (see build_worker).
-    idle_keepalive = IdleKeepaliveProcessor(
-        interval_secs=_idle_keepalive_interval_secs(
-            config.idle_timeout_secs, IDLE_KEEPALIVE_MAX_INTERVAL_SECS
-        ),
-        max_busy_secs=IDLE_KEEPALIVE_MAX_BUSY_SECS,
-    )
+    # as idle and doesn't trip the session's idle timeout mid-turn. On whenever a
+    # timeout is set (a correctness fix, not a flourish); BotBusyFrame is
+    # registered in the worker's idle_timeout_frames (see build_worker). Skipped
+    # when idle_timeout_secs is None, since there's no timeout to protect.
+    idle_keepalive_processors = []
+    if config.idle_timeout_secs is not None:
+        idle_keepalive_processors = [
+            IdleKeepaliveProcessor(
+                interval_secs=_idle_keepalive_interval_secs(
+                    config.idle_timeout_secs, IDLE_KEEPALIVE_MAX_INTERVAL_SECS
+                ),
+                max_busy_secs=IDLE_KEEPALIVE_MAX_BUSY_SECS,
+            )
+        ]
 
     # Soft "working" cue, sitting just before transport.output() so it sees the
     # turn/tool/TTS frames it gates on. When disabled it's simply omitted.
@@ -165,7 +170,7 @@ async def build_pipeline(
             transport.input(),
             user_aggregator,
             services.llm,
-            idle_keepalive,
+            *idle_keepalive_processors,
             *working_sound_processors,
             transport.output(),
             assistant_aggregator,
@@ -177,7 +182,7 @@ async def build_pipeline(
             user_aggregator,
             services.llm,
             services.tts,
-            idle_keepalive,
+            *idle_keepalive_processors,
             *working_sound_processors,
             transport.output(),
             assistant_aggregator,
