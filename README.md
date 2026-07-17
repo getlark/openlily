@@ -355,6 +355,7 @@ config = openlily.AgentConfig(
     enabled_tools=["email"],      # optional tools (each needs its credentials in the env)
     working_sound=True,           # set False to drop the soft "thinking" cue
     readiness_chime=True,         # set False to drop the startup ding
+    allow_interruptions=True,     # set False to disallow barge-in while the bot speaks
 )
 await openlily.warmup(config)
 agent = await openlily.create_agent(my_transport, config)

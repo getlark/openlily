@@ -98,6 +98,14 @@ class AgentConfig:
     # bursts. Pass a ``VADParams`` to override.
     user_vad_params: VADParams | None = None
 
+    # Whether the user can barge in (interrupt the bot) while it's speaking.
+    # ``True`` (default) is normal turn-taking: user speech during bot output
+    # interrupts it. ``False`` disallows barge-in by muting the user's mic while
+    # the bot speaks -- captured audio is dropped before it reaches STT (cascade
+    # brains) or the realtime LLM (speech-to-speech brains), so neither can be
+    # interrupted mid-utterance. The user is heard again as soon as the bot stops.
+    allow_interruptions: bool = True
+
     # Worker pipeline params. ``None`` builds ``PipelineParams`` from
     # ``enable_metrics``; pass one to fully control it.
     pipeline_params: PipelineParams | None = None

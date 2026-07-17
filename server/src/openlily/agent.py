@@ -29,6 +29,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.transports.base_transport import BaseTransport
+from pipecat.turns.user_mute import AlwaysUserMuteStrategy
 
 from openlily.brains import BrainSpec, get_brain
 from openlily.config import (
@@ -126,10 +127,18 @@ async def build_pipeline(
         start_secs=0.3,
         min_volume=0.5,
     )
+    # Disallow barge-in (config.allow_interruptions=False) by muting the user
+    # while the bot speaks: the aggregator drops captured audio (InputAudioRawFrame
+    # + turn/interruption frames) before it reaches STT (cascade) or the realtime
+    # LLM (speech-to-speech), so neither can be interrupted mid-utterance. The
+    # user is heard again the moment the bot stops. Empty list = normal barge-in.
+    user_mute_strategies = [] if config.allow_interruptions else [AlwaysUserMuteStrategy()]
+
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(params=vad_params),
+            user_mute_strategies=user_mute_strategies,
         ),
         # Realtime (speech-to-speech) services need different context-write
         # timing; the aggregator warns if this isn't set for them.
