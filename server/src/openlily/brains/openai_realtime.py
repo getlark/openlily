@@ -30,9 +30,9 @@ def build(system_instruction: str) -> BrainServices:
     session_properties = SessionProperties(
         audio=AudioConfiguration(
             input=AudioInput(
-                # Pin transcription to English and a concrete model so the
-                # model never language-guesses on short or noisy input and
-                # starts emitting non-English words.
+                # Generate English user transcripts for logging and debugging.
+                # This asynchronous transcription is separate from the
+                # realtime model's direct understanding of the input audio.
                 transcription=InputAudioTranscription(
                     model=ov.stt.model or "gpt-4o-transcribe",
                     language="en",
