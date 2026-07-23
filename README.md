@@ -11,6 +11,9 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
 
 You can also run it on other standalone devices like raspberry pi, mac mini, etc.
 
+> **Don't want to self-host?** Try the managed, web-hosted version at
+> [asklyla.ai](https://asklyla.ai) — no setup or API keys required.
+
 ## Demo
 
 **[Watch the demo video](https://youtu.be/Zp6WIQz0-O8?si=HrzU2_j3UUC7hNmV)** to see openlily in action.
