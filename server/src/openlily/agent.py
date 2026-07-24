@@ -30,6 +30,8 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.transports.base_transport import BaseTransport
 from pipecat.turns.user_mute import AlwaysUserMuteStrategy
+from pipecat.turns.user_start import TranscriptionUserTurnStartStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from openlily.brains import BrainSpec, get_brain
 from openlily.config import (
@@ -48,6 +50,7 @@ from openlily.tools.bundle import (
     tools_schema_from_bundle,
 )
 from openlily.tools.runtime import setup_tools, warmup_tools
+from openlily.turn_recovery import wire_empty_turn_recovery
 from openlily.working_sound import WorkingSoundProcessor
 
 
@@ -134,16 +137,45 @@ async def build_pipeline(
     # user is heard again the moment the bot stops. Empty list = normal barge-in.
     user_mute_strategies = [] if config.allow_interruptions else [AlwaysUserMuteStrategy()]
 
+    # Cascade brains gate turn starts on transcription instead of pipecat's
+    # defaults, which also include a pure-VAD start strategy: a VAD
+    # false-trigger (breath, cough, background noise) while the bot is thinking
+    # would start a turn and broadcast an interruption, cancelling the
+    # in-flight response for a turn that never produces a transcript. Requiring
+    # (interim) transcription to start a turn means such noise can't cancel
+    # anything; the cost is barge-in waiting a few hundred ms for the first
+    # interim transcript. Stop strategies stay at pipecat defaults.
+    #
+    # Realtime brains must get ``None``: pipecat's realtime mode strips the
+    # transcription start strategy (a transcription-only list would become an
+    # empty start list) and, for services that emit their own turn frames,
+    # swaps in external strategies -- a swap that only happens when no custom
+    # strategies are passed. Ghost-turn recovery there is handled by empty-turn
+    # recovery below.
+    user_turn_strategies = (
+        None
+        if brain.is_realtime
+        else UserTurnStrategies(start=[TranscriptionUserTurnStartStrategy()])
+    )
+
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=SileroVADAnalyzer(params=vad_params),
             user_mute_strategies=user_mute_strategies,
+            user_turn_strategies=user_turn_strategies,
         ),
         # Realtime (speech-to-speech) services need different context-write
         # timing; the aggregator warns if this isn't set for them.
         realtime_service_mode=brain.is_realtime,
     )
+
+    # Empty-turn recovery: if a user turn ends with no content while the
+    # context still ends in an unanswered user message (an interruption --
+    # e.g. a VAD false-trigger or a hallucinated empty transcript -- cancelled
+    # the in-flight response), re-run the LLM so the question doesn't sit
+    # unanswered forever. See openlily.turn_recovery for the full story.
+    wire_empty_turn_recovery(user_aggregator, assistant_aggregator, context)
 
     # Idle keep-alive heartbeat so the bot's silent "thinking" time isn't counted
     # as idle and doesn't trip the session's idle timeout mid-turn. On whenever a
