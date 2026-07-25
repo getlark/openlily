@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from pipecat.audio.vad.vad_analyzer import VADParams
     from pipecat.observers.base_observer import BaseObserver
     from pipecat.pipeline.worker import PipelineParams
+    from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
     from openlily.brains import BrainName, BrainSpec
     from openlily.tools.contracts import ToolName
@@ -94,9 +95,28 @@ class AgentConfig:
     observers: Sequence[BaseObserver] | None = None
 
     # VAD params for the user aggregator. ``None`` uses openlily's tuned defaults
-    # (confidence=0.8, start_secs=0.3, min_volume=0.5), which reject short noise
-    # bursts. Pass a ``VADParams`` to override.
+    # (confidence=0.7, start_secs=0.3, min_volume=0.5): start_secs is slightly
+    # above pipecat's default so short noise bursts don't open a speech segment,
+    # and min_volume is *below* pipecat's because strict thresholds demonstrably
+    # reject real speech from quiet mics (see the quiet-mic note in agent.py).
+    # Pass a ``VADParams`` to override -- lower confidence/min_volume further if
+    # the ConversationLogObserver warns that STT is transcribing during VAD
+    # silence.
     user_vad_params: VADParams | None = None
+
+    # User turn start/stop strategies for the user aggregator. ``None`` uses
+    # openlily's defaults, which are pipecat's: turn starts on VAD *or* interim
+    # transcription (fast barge-in), stops via the smart-turn analyzer. Pass a
+    # ``UserTurnStrategies`` to take full control -- e.g.
+    # ``UserTurnStrategies(start=[TranscriptionUserTurnStartStrategy()])`` to
+    # gate turn starts on transcription so VAD false-triggers can't cancel an
+    # in-flight response (openlily's previous default; costs seconds of barge-in
+    # latency because STT only finalizes after an endpoint). Cascade brains
+    # only: combining this with a realtime (speech-to-speech) brain raises,
+    # because pipecat swaps in the service's external turn strategies only when
+    # no custom strategies are passed, so an override would silently break turn
+    # detection there.
+    user_turn_strategies: UserTurnStrategies | None = None
 
     # Whether the user can barge in (interrupt the bot) while it's speaking.
     # ``True`` (default) is normal turn-taking: user speech during bot output

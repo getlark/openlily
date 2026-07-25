@@ -31,6 +31,8 @@ from pipecat.frames.frames import (
     LLMFullResponseEndFrame,
     LLMTextFrame,
     TranscriptionFrame,
+    VADUserStartedSpeakingFrame,
+    VADUserStoppedSpeakingFrame,
 )
 from pipecat.observers.base_observer import BaseObserver, FramePushed
 from pipecat.processors.frame_processor import FrameDirection
@@ -40,6 +42,15 @@ from pipecat.services.stt_service import STTService
 # Tool-call args/results can be large (e.g. web_search payloads); cap what we
 # dump so the logs stay a quick, readable summary rather than a wall of JSON.
 _MAX_RESULT_CHARS = 500
+
+# How long the VAD must have reported silence for an arriving STT transcript to
+# count as a disagreement worth warning about. STT routinely finalizes a little
+# *after* the VAD stops (it needs an endpoint), so a short gap is normal; a
+# transcript landing seconds into VAD silence means the VAD is classifying this
+# user's live speech as silence (thresholds too strict for their mic), which
+# silently degrades turn-taking (turns force-end mid-sentence, barge-in via VAD
+# never fires).
+_VAD_SILENCE_WARN_SECS = 1.5
 
 
 def _truncate(text: str, limit: int = _MAX_RESULT_CHARS) -> str:
@@ -145,6 +156,10 @@ _SENTENCE_RE = re.compile(r"\s*\S.*?[.!?]+(?=\s)", re.S)
 class ConversationLogObserver(BaseObserver):
     """Log user speech, bot speech, and tool-call results to the console.
 
+    Also watches the VAD and STT frame streams for disagreement and warns when
+    STT transcribes speech the VAD classified as silence (see
+    ``_warn_if_vad_rejecting_speech``).
+
     Dedup strategy: ``on_push_frame`` fires once per processor hop, so a frame
     that traverses several processors would be logged repeatedly. We only act
     when ``data.source`` is the service that *emits* the frame (an ``STTService``
@@ -162,6 +177,14 @@ class ConversationLogObserver(BaseObserver):
         # Opt-in structured dump of tool calls/results to a per-session file.
         # No-op unless TOOL_CALL_DEBUG_DIR is set, so the default path is unchanged.
         self._tool_debug = _ToolCallDebugSink()
+        # VAD/STT disagreement tracking (see _warn_if_vad_rejecting_speech).
+        # Timestamps are pipeline-clock nanoseconds from FramePushed. The
+        # silence baseline starts at the first observed frame, so a VAD that
+        # never fires at all (thresholds reject the mic entirely) still trips
+        # the warning on the first transcript.
+        self._vad_speaking = False
+        self._vad_silence_since_ns: int | None = None
+        self._warned_this_vad_silence = False
 
     def _flush_complete_sentences(self) -> None:
         """Log any complete sentences sitting at the front of the buffer."""
@@ -174,10 +197,51 @@ class ConversationLogObserver(BaseObserver):
             if sentence:
                 logger.info(f"BOT: {sentence!r}")
 
+    def _warn_if_vad_rejecting_speech(self, now_ns: int) -> None:
+        """WARN when STT transcribes speech during sustained VAD silence.
+
+        The two disagreeing on a live mic is the signature of VAD thresholds
+        (confidence/min_volume) rejecting this user's audio: the smart-turn
+        stop watchdog force-ends turns mid-sentence and VAD-based barge-in
+        never fires, while STT happily keeps transcribing. That failure is
+        otherwise near-invisible in the logs, so surface it as a one-line
+        warning (once per silence stretch, to avoid one line per fragment).
+        """
+        if self._vad_speaking or self._warned_this_vad_silence:
+            return
+        if self._vad_silence_since_ns is None:
+            return
+        silence_secs = (now_ns - self._vad_silence_since_ns) / 1_000_000_000
+        if silence_secs < _VAD_SILENCE_WARN_SECS:
+            return
+        self._warned_this_vad_silence = True
+        logger.warning(
+            f"STT transcribed speech during {silence_secs:.1f}s of VAD silence -- VAD "
+            "thresholds (confidence/min_volume) may be rejecting this user's audio; "
+            "consider lowering them via AgentConfig.user_vad_params"
+        )
+
     async def on_push_frame(self, data: FramePushed):
         src = data.source
         frame = data.frame
         direction = data.direction
+
+        # Baseline for "the VAD has been silent since..." when no VAD frame has
+        # been seen yet: the first frame ever observed (~pipeline start).
+        if self._vad_silence_since_ns is None:
+            self._vad_silence_since_ns = data.timestamp
+
+        # VAD state, for the disagreement warning below. These frames traverse
+        # several hops (one observation each), so setting state repeatedly for
+        # the same frame is harmless.
+        if isinstance(frame, VADUserStartedSpeakingFrame):
+            self._vad_speaking = True
+            self._warned_this_vad_silence = False
+            return
+        if isinstance(frame, VADUserStoppedSpeakingFrame):
+            self._vad_speaking = False
+            self._vad_silence_since_ns = data.timestamp
+            return
 
         # User speech. Source is the STT service (cascade) or the realtime LLM
         # service (realtime), so accept either.
@@ -185,6 +249,11 @@ class ConversationLogObserver(BaseObserver):
             text = (frame.text or "").strip()
             if text:
                 logger.info(f"USER: {text!r}")
+                # Cascade only: realtime services legitimately deliver
+                # transcripts long after the VAD stops (often only once the
+                # assistant response starts), which would false-positive here.
+                if isinstance(src, STTService):
+                    self._warn_if_vad_rejecting_speech(data.timestamp)
             return
 
         # Bot speech. Accumulate the LLM's text deltas and log each sentence as

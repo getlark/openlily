@@ -30,8 +30,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.transports.base_transport import BaseTransport
 from pipecat.turns.user_mute import AlwaysUserMuteStrategy
-from pipecat.turns.user_start import TranscriptionUserTurnStartStrategy
-from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from openlily.brains import BrainSpec, get_brain
 from openlily.config import (
@@ -108,6 +106,19 @@ async def build_pipeline(
     """
     brain = resolve_brain(config)
 
+    # Fail fast, before any tool/service setup: custom turn strategies are
+    # unsupported with realtime brains. Pipecat's realtime mode swaps in the
+    # service's external turn strategies (for services that emit their own turn
+    # frames) only when no custom strategies are passed, so an override would
+    # silently break turn detection.
+    if brain.is_realtime and config.user_turn_strategies is not None:
+        raise ValueError(
+            "AgentConfig.user_turn_strategies is not supported with realtime "
+            "(speech-to-speech) brains: pipecat swaps in the service's external "
+            "turn strategies only when no custom strategies are passed, so an "
+            "override would silently break turn detection. Leave it as None."
+        )
+
     # Set up tools before building the LLM: the system prompt is composed from
     # the active tools' descriptions, and the LLM bakes in that prompt at
     # construction. The brain declares its tool ids; always-on and configured
@@ -123,10 +134,21 @@ async def build_pipeline(
     tools = tools_schema_from_bundle(tool_bundle)
     context = LLMContext(tools=tools) if tools else LLMContext()
 
-    # Tuned tighter than the pipecat defaults so short noise bursts don't open a
-    # speech segment and get shipped to STT, where they hallucinate transcripts.
+    # start_secs is tuned slightly above pipecat's default (0.3 vs 0.2) so short
+    # noise bursts don't open a speech segment and get shipped to STT, where
+    # they hallucinate transcripts. confidence matches pipecat's default and
+    # min_volume sits *below* it (0.5 vs 0.6): both conditions must pass for
+    # speech to be detected, and stricter thresholds demonstrably classify real
+    # speech from quiet mics as silence -- the turn then force-ends mid-sentence
+    # on the stop watchdog while STT keeps transcribing (the
+    # ConversationLogObserver warns when it sees this disagreement). The two
+    # failure modes the old, stricter thresholds guarded against are now
+    # mitigated structurally: hallucinated/ghost turns are healed by empty-turn
+    # recovery, and noise bursts shorter than start_secs still never reach STT.
+    # Quiet-mic setups that still trip the observer warning should lower
+    # confidence/min_volume via ``user_vad_params``.
     vad_params = config.user_vad_params or VADParams(
-        confidence=0.8,
+        confidence=0.7,
         start_secs=0.3,
         min_volume=0.5,
     )
@@ -137,26 +159,21 @@ async def build_pipeline(
     # user is heard again the moment the bot stops. Empty list = normal barge-in.
     user_mute_strategies = [] if config.allow_interruptions else [AlwaysUserMuteStrategy()]
 
-    # Cascade brains gate turn starts on transcription instead of pipecat's
-    # defaults, which also include a pure-VAD start strategy: a VAD
-    # false-trigger (breath, cough, background noise) while the bot is thinking
-    # would start a turn and broadcast an interruption, cancelling the
-    # in-flight response for a turn that never produces a transcript. Requiring
-    # (interim) transcription to start a turn means such noise can't cancel
-    # anything; the cost is barge-in waiting a few hundred ms for the first
-    # interim transcript. Stop strategies stay at pipecat defaults.
-    #
-    # Realtime brains must get ``None``: pipecat's realtime mode strips the
-    # transcription start strategy (a transcription-only list would become an
-    # empty start list) and, for services that emit their own turn frames,
-    # swaps in external strategies -- a swap that only happens when no custom
-    # strategies are passed. Ghost-turn recovery there is handled by empty-turn
-    # recovery below.
-    user_turn_strategies = (
-        None
-        if brain.is_realtime
-        else UserTurnStrategies(start=[TranscriptionUserTurnStartStrategy()])
-    )
+    # User turn strategies. ``None`` (the default) means pipecat's defaults:
+    # turn starts on VAD *or* interim transcription, stops via the smart-turn
+    # analyzer. The VAD start strategy is what makes barge-in fast -- a user
+    # talking over the bot is heard the moment the VAD fires, instead of
+    # waiting for STT to finalize a transcript (which some services only do
+    # after an endpoint, i.e. seconds later). The cost is that a VAD
+    # false-trigger (breath, cough, background noise) while the bot is
+    # thinking can start a "ghost" turn and cancel the in-flight response;
+    # empty-turn recovery (wired below) re-runs the LLM in exactly that case,
+    # which is why openlily no longer gates cascade turn starts on
+    # transcription. Callers who prefer the old trade-off can pass
+    # ``UserTurnStrategies(start=[TranscriptionUserTurnStartStrategy()])``.
+    # ``None`` also lets pipecat's realtime mode swap in external strategies
+    # for realtime brains (custom strategies were rejected above).
+    user_turn_strategies = config.user_turn_strategies
 
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,

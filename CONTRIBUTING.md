@@ -88,7 +88,8 @@ agent = await openlily.create_agent(my_transport, config)   # add agent.worker t
 ```
 
 Everything is modular: toggle the flourishes (`working_sound=False`,
-`readiness_chime=False`), override the prompt/observers/VAD, add a brain or tool
+`readiness_chime=False`), override the prompt/observers/VAD/turn strategies
+(`user_vad_params`, `user_turn_strategies`), add a brain or tool
 with `openlily.register_brain` / `openlily.register_tool`, or import the individual
 processors (`WorkingSoundProcessor`, `IdleKeepaliveProcessor`, `chime_pcm`, ...) and
 compose your own pipeline. See [examples/](examples/).
