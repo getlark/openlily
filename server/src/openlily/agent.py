@@ -48,7 +48,10 @@ from openlily.tools.bundle import (
     tools_schema_from_bundle,
 )
 from openlily.tools.runtime import setup_tools, warmup_tools
-from openlily.turn_recovery import wire_empty_turn_recovery
+from openlily.turn_recovery import (
+    DEFAULT_EMPTY_TURN_FALLBACK_INSTRUCTION,
+    wire_empty_turn_recovery,
+)
 from openlily.working_sound import WorkingSoundProcessor
 
 
@@ -191,8 +194,30 @@ async def build_pipeline(
     # context still ends in an unanswered user message (an interruption --
     # e.g. a VAD false-trigger or a hallucinated empty transcript -- cancelled
     # the in-flight response), re-run the LLM so the question doesn't sit
-    # unanswered forever. See openlily.turn_recovery for the full story.
-    wire_empty_turn_recovery(user_aggregator, assistant_aggregator, context)
+    # unanswered forever. When there's nothing to recover either (VAD detected
+    # speech but STT produced no transcript, e.g. degraded Bluetooth audio on
+    # the first turn), the spoken fallback asks the user to repeat instead of
+    # leaving the bot silent forever. Cascade brains only: in pipecat 1.4.0
+    # the realtime services don't implement mid-session message appends. See
+    # openlily.turn_recovery for the full story.
+    empty_turn_fallback = config.empty_turn_fallback
+    if brain.is_realtime or empty_turn_fallback is False:
+        if brain.is_realtime and empty_turn_fallback is not False:
+            logger.info(
+                "Spoken empty-turn fallback disabled: realtime brains don't support "
+                "mid-session context appends in pipecat 1.4.0"
+            )
+        fallback_instruction = None
+    elif empty_turn_fallback is True:
+        fallback_instruction = DEFAULT_EMPTY_TURN_FALLBACK_INSTRUCTION
+    else:
+        fallback_instruction = empty_turn_fallback
+    wire_empty_turn_recovery(
+        user_aggregator,
+        assistant_aggregator,
+        context,
+        fallback_instruction=fallback_instruction,
+    )
 
     # Idle keep-alive heartbeat so the bot's silent "thinking" time isn't counted
     # as idle and doesn't trip the session's idle timeout mid-turn. On whenever a

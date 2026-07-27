@@ -75,6 +75,17 @@ class AgentConfig:
     # Play a short readiness chime the moment the pipeline can accept audio.
     readiness_chime: bool = True
 
+    # Spoken fallback when a user turn ends with no transcript and there is
+    # nothing to recover (e.g. degraded audio trips the VAD but defeats STT on
+    # the very first turn): the bot briefly says it couldn't make out what the
+    # user said and asks them to repeat. ``True`` uses the default instruction;
+    # a string overrides it (it's injected as a system message, so apps can
+    # control tone); ``False`` disables the fallback. Cascade brains only: in
+    # pipecat 1.4.0 the realtime services don't implement mid-session message
+    # appends, so this is a documented no-op for realtime brains (see
+    # openlily.turn_recovery).
+    empty_turn_fallback: bool | str = True
+
     # Seconds of silence before the session ends itself. Defaults to ``None``,
     # which disables the idle timeout entirely: the session is never ended on
     # silence and runs until something else stops it. Set a float (e.g.
