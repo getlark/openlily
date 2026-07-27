@@ -12,7 +12,7 @@ import pytest
 import openlily.tools.email as email_pkg
 import openlily.tools.runtime as tools_runtime
 import openlily.tools.web as web_pkg
-from openlily.tools.bundle import ToolBundle
+from openlily.tools.bundle import ToolBundle, ToolGuidance
 from openlily.tools.contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from openlily.tools.email import setup_email_tools
 from openlily.tools.email.config import USER_EMAIL_ENV
@@ -39,7 +39,9 @@ def test_web_configured_wires_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ExaProvider, "create_tools", lambda self: [_noop])
     bundle = setup_web_tools()
     assert bundle.standard_tools == [_noop]
-    assert bundle.instructions == [WEB_SEARCH_INSTRUCTION]
+    assert bundle.instructions == [
+        ToolGuidance(tool_names=("_noop",), text=WEB_SEARCH_INSTRUCTION)
+    ]
 
 
 def test_web_unknown_provider_raises(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -92,8 +94,10 @@ async def test_generic_tools_always_includes_session() -> None:
 
 
 async def test_generic_tools_enabled_and_configured_wires(monkeypatch: pytest.MonkeyPatch) -> None:
+    guidance = ToolGuidance(tool_names=("_noop",), text="X capability")
+
     async def fake_setup() -> ToolBundle:
-        return ToolBundle(standard_tools=[_noop], instructions=["X capability"])
+        return ToolBundle(standard_tools=[_noop], instructions=[guidance])
 
     fake_spec = ToolSpec(
         id=ToolId.EMAIL,
@@ -109,7 +113,7 @@ async def test_generic_tools_enabled_and_configured_wires(monkeypatch: pytest.Mo
     bundle = await setup_tools(enabled_tool_names=[ToolName.EMAIL])
 
     assert _noop in bundle.standard_tools  # the enabled tool's tool
-    assert "X capability" in bundle.instructions
+    assert guidance in bundle.instructions
 
 
 async def test_generic_tools_enabled_but_unconfigured_raises(
@@ -137,8 +141,10 @@ async def test_generic_tools_enabled_but_unconfigured_raises(
 async def test_brain_declared_tool_is_resolved_from_registry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    guidance = ToolGuidance(tool_names=("web_search",), text="Hosted web")
+
     async def fake_setup() -> ToolBundle:
-        return ToolBundle(standard_tools=[_noop], instructions=["Hosted web"])
+        return ToolBundle(standard_tools=[_noop], instructions=[guidance])
 
     fake_spec = ToolSpec(
         id=ToolId.WEB_HOSTED,
@@ -152,7 +158,7 @@ async def test_brain_declared_tool_is_resolved_from_registry(
     bundle = await tools_runtime.setup_tools((ToolId.WEB_HOSTED,))
 
     assert bundle.standard_tools == [_noop]
-    assert bundle.instructions == ["Hosted web"]
+    assert bundle.instructions == [guidance]
 
 
 async def test_enabled_mcp_tool_requires_warmup(monkeypatch: pytest.MonkeyPatch) -> None:

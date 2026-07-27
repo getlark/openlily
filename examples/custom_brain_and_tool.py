@@ -25,6 +25,7 @@ from openlily import (
     ToolActivation,
     ToolBackend,
     ToolBundle,
+    ToolGuidance,
     ToolSpec,
     WorkingSoundProcessor,
 )
@@ -40,7 +41,15 @@ async def _setup_clock_tool() -> ToolBundle:
 
     return ToolBundle(
         standard_tools=[what_time_is_it],
-        instructions=["You can tell the user the current time."],
+        # Pair the prompt snippet with the LLM-visible function name(s) it
+        # covers; it renders as <Tool name="what_time_is_it">...</Tool> in the
+        # system prompt's <ToolGuidance> block.
+        instructions=[
+            ToolGuidance(
+                tool_names=("what_time_is_it",),
+                text="You can tell the user the current time.",
+            )
+        ],
     )
 
 

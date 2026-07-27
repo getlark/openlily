@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
-from openlily.tools.bundle import ToolBundle
+from openlily.tools.bundle import ToolBundle, ToolGuidance
 from openlily.tools.contracts import (
     ToolActivation,
     ToolBackend,
@@ -58,7 +58,9 @@ async def test_warmup_reuses_connection_for_session_bundle(pool: MCPToolsPool) -
     assert connect.await_count == 1
     assert pool.is_ready(ToolId.X)
     bundle = pool.session_bundle(ToolId.X)
-    assert bundle.instructions == ["X capability"]
+    # The snippet from mcp_instructions gets paired with the (here empty)
+    # schema's tool names when the session bundle is built.
+    assert bundle.instructions == [ToolGuidance(tool_names=(), text="X capability")]
     assert len(bundle.cleanups) == 1
     await bundle.cleanups[0]()
     mcp.close.assert_not_awaited()

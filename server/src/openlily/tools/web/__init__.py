@@ -19,7 +19,7 @@ from loguru import logger
 from pipecat.adapters.schemas.tools_schema import AdapterType
 
 from ..base import ToolProvider
-from ..bundle import ToolBundle
+from ..bundle import ToolBundle, ToolGuidance
 from ..contracts import ToolActivation, ToolBackend, ToolId, ToolSpec
 from .config import WEB_SEARCH_PROVIDER
 
@@ -55,7 +55,8 @@ def hosted_web_search_bundle(search_context_size: str = "low") -> ToolBundle:
         # OpenAI-shaped LLM finds the tool here -- including Meta's compatible API.
         # Tools under any other adapter key are ignored by the OpenAI adapter.
         custom_tools={AdapterType.OPENAI: [web_search]},
-        instructions=[WEB_SEARCH_INSTRUCTION],
+        # The hosted tool's LLM-visible name is its "type" ("web_search").
+        instructions=[ToolGuidance(tool_names=("web_search",), text=WEB_SEARCH_INSTRUCTION)],
     )
 
 
@@ -118,7 +119,13 @@ def setup_web_tools() -> ToolBundle:
     logger.info(f"Web search tool ready (provider={WEB_SEARCH_PROVIDER})")
     return ToolBundle(
         standard_tools=list(tools),
-        instructions=[WEB_SEARCH_INSTRUCTION],
+        # Direct functions' LLM-visible names are their function names.
+        instructions=[
+            ToolGuidance(
+                tool_names=tuple(tool.__name__ for tool in tools),
+                text=WEB_SEARCH_INSTRUCTION,
+            )
+        ],
     )
 
 

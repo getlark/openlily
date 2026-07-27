@@ -23,7 +23,7 @@ from collections.abc import Callable
 
 from loguru import logger
 
-from ..bundle import ToolBundle
+from ..bundle import ToolBundle, ToolGuidance
 from ..contracts import ToolActivation, ToolBackend, ToolId, ToolName, ToolSpec
 from .base import EmailProvider
 from .config import EMAIL_PROVIDER, USER_EMAIL_ENV, get_user_email
@@ -110,7 +110,13 @@ async def setup_email_tools() -> ToolBundle:
     logger.info(f"Email tool ready (provider={EMAIL_PROVIDER})")
     return ToolBundle(
         standard_tools=list(tools),
-        instructions=[EMAIL_INSTRUCTION],
+        # Direct functions' LLM-visible names are their function names.
+        instructions=[
+            ToolGuidance(
+                tool_names=tuple(tool.__name__ for tool in tools),
+                text=EMAIL_INSTRUCTION,
+            )
+        ],
     )
 
 

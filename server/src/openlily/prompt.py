@@ -2,13 +2,12 @@
 
 Holds the durable system instruction (identity, voice-output rules, tool
 guidance, and guardrails) and a per-session builder that injects the active
-tools' descriptions and appends today's date.
+tools' guidance block and appends today's date.
 """
 
 from __future__ import annotations
 
 import textwrap
-from collections.abc import Sequence
 from datetime import datetime
 from string import Template
 
@@ -18,8 +17,9 @@ from string import Template
 # are omitted here -- this bot has neither a token-metadata profile nor an email
 # tool.
 #
-# ``$tool_instructions`` is filled in per session with one bullet per active
-# tool (see ``build_system_instruction``), so the prompt only mentions
+# ``$tool_guidance`` is filled in per session with the pre-rendered
+# ``<ToolGuidance>`` block for the active tools (see
+# ``openlily.tools.bundle.render_tool_guidance``), so the prompt only mentions
 # capabilities that are actually wired in -- and nothing when there are none.
 BASE_INSTRUCTIONS = Template(
     textwrap.dedent(
@@ -41,9 +41,9 @@ BASE_INSTRUCTIONS = Template(
 
 
         <Tools>
-        - Use available tools as needed.$tool_instructions
+        - Use available tools as needed.
         - Speak outcomes clearly. If an action fails, say so once, propose a fallback, or ask how to proceed.
-        - When tools return structured data, summarize it to the user in a way that is easy to understand, and don't directly recite identifiers or other technical details.
+        - When tools return structured data, summarize it to the user in a way that is easy to understand, and don't directly recite identifiers or other technical details.$tool_guidance
         </Tools>
 
         <Guardrails>
@@ -56,18 +56,17 @@ BASE_INSTRUCTIONS = Template(
 )
 
 
-def build_system_instruction(tool_instructions: Sequence[str] | None = None) -> str:
+def build_system_instruction(tool_guidance: str = "") -> str:
     """Return the base instructions, with active tools and today's date injected.
 
-    ``tool_instructions`` are the prompt snippets for the tools actually wired in
-    this session (from each ``ToolBundle``); they're rendered as bullets under
-    ``<Tools>`` so the prompt only mentions capabilities that exist. Computed per
-    session so the model always has the current date.
+    ``tool_guidance`` is the pre-rendered ``<ToolGuidance>`` block for the tools
+    actually wired in this session (see
+    ``openlily.tools.bundle.render_tool_guidance``); it's embedded under
+    ``<Tools>`` so the prompt only mentions capabilities that exist. Pass ``""``
+    (the default) when no tools contribute guidance -- it leaves no blank line
+    behind. Computed per session so the model always has the current date.
     """
-    # Leading newline per bullet so an empty list leaves no blank line behind.
-    tool_bullets = "".join(
-        f"\n- {instruction}" for instruction in (tool_instructions or [])
-    )
-    base = BASE_INSTRUCTIONS.substitute(tool_instructions=tool_bullets)
+    block = f"\n{tool_guidance}" if tool_guidance else ""
+    base = BASE_INSTRUCTIONS.substitute(tool_guidance=block)
     today = datetime.now().strftime("%A, %B %-d, %Y")
     return f"{base}\n# Current context\n\n- Today's date is {today}.\n"

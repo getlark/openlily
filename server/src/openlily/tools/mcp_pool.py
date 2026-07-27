@@ -25,6 +25,8 @@ from .mcp_bundle import mcp_tool_bundle
 class _PooledMCP:
     mcp: MCPClient
     tools_schema: ToolsSchema
+    # Raw prompt snippets from ToolSpec.mcp_instructions; paired with the
+    # schema's tool names when the session bundle is built (mcp_tool_bundle).
     instructions: list[str]
 
 

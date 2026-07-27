@@ -176,9 +176,11 @@ Library **consumers** can add a tool without editing the package: build a `ToolS
 reference it from a custom brain's `BrainSpec.tools`. See [examples/](examples/).
 
 A `ToolBundle` ([server/src/openlily/tools/bundle.py](server/src/openlily/tools/bundle.py))
-carries the tools plus optional prompt snippets (`instructions`), LLM-dependent
-`registrations` (e.g. MCP), and `cleanups` run at session end. Bundles merge by
-concatenation, so tools compose.
+carries the tools plus optional prompt guidance (`instructions`, a list of
+`ToolGuidance` entries pairing each snippet with the LLM-visible function names
+it covers; rendered into the system prompt's `<ToolGuidance>` block),
+LLM-dependent `registrations` (e.g. MCP), and `cleanups` run at session end.
+Bundles merge by concatenation, so tools compose.
 
 ## Working with a coding agent
 

@@ -98,8 +98,11 @@ class AgentConfig:
 
     # System prompt. ``None`` uses ``build_system_instruction`` (base rules +
     # active tools + date). Pass a string to fully override it, or a callable
-    # ``(tool_instructions) -> str`` to compose your own from the active tools.
-    system_instruction: str | Callable[[Sequence[str]], str] | None = None
+    # ``(tool_guidance: str) -> str`` to compose your own: it receives the
+    # pre-rendered ``<ToolGuidance>`` block for the session's active tools
+    # (``""`` when no tools contribute guidance), so it can embed the block
+    # unconditionally.
+    system_instruction: str | Callable[[str], str] | None = None
 
     # Pipeline observers. ``None`` uses ``[ConversationLogObserver()]`` (logs
     # user/bot speech and tool calls). Pass ``[]`` for none, or your own list.

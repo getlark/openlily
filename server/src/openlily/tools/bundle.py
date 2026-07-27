@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -13,17 +13,47 @@ from pipecat.adapters.schemas.tools_schema import AdapterType, ToolsSchema
 from pipecat.services.llm_service import LLMService
 
 
+@dataclass(frozen=True)
+class ToolGuidance:
+    """One prompt snippet paired with the LLM-visible function name(s) it covers.
+
+    ``tool_names`` are the names the LLM sees in its tool schema (e.g.
+    ``end_session``, ``web_search``, or every function an MCP server exposes),
+    so the rendered guidance (see :func:`render_tool_guidance`) tells the model
+    exactly which functions each snippet is about.
+    """
+
+    tool_names: tuple[str, ...]
+    text: str
+
+
+def render_tool_guidance(guidance: Sequence[ToolGuidance]) -> str:
+    """Render guidance entries as one ``<ToolGuidance>`` block.
+
+    Each entry becomes a ``<Tool name="...">text</Tool>`` line, with the
+    covered function names joined by commas. Returns ``""`` when no tools
+    contribute guidance, so consumers can inject the block unconditionally.
+    """
+    if not guidance:
+        return ""
+    entries = "\n".join(
+        f'<Tool name="{", ".join(entry.tool_names)}">{entry.text.strip()}</Tool>'
+        for entry in guidance
+    )
+    return f"<ToolGuidance>\n{entries}\n</ToolGuidance>"
+
+
 @dataclass
 class ToolBundle:
     """Tools contributed by one registry entry.
 
     Pure data: direct or advertised tools, provider-hosted tools, prompt
-    instructions, LLM-dependent registrations, and lifecycle cleanups.
+    guidance, LLM-dependent registrations, and lifecycle cleanups.
     """
 
     standard_tools: list[FunctionSchema | DirectFunction] = field(default_factory=list)
     custom_tools: dict[AdapterType, list[dict[str, Any]]] = field(default_factory=dict)
-    instructions: list[str] = field(default_factory=list)
+    instructions: list[ToolGuidance] = field(default_factory=list)
     registrations: list[Callable[[LLMService], Awaitable[None]]] = field(default_factory=list)
     cleanups: list[Callable[[], Awaitable[None]]] = field(default_factory=list)
 
@@ -68,8 +98,10 @@ async def close_tool_bundle(bundle: ToolBundle) -> None:
 
 __all__ = [
     "ToolBundle",
+    "ToolGuidance",
     "close_tool_bundle",
     "merge_tool_bundles",
     "register_tool_bundle",
+    "render_tool_guidance",
     "tools_schema_from_bundle",
 ]

@@ -11,15 +11,15 @@ from loguru import logger
 from pipecat.frames.frames import FunctionCallResultProperties
 from pipecat.services.llm_service import FunctionCallParams
 
-from ..bundle import ToolBundle
+from ..bundle import ToolBundle, ToolGuidance
 from ..contracts import ToolActivation, ToolBackend, ToolId, ToolSpec
 
 END_SESSION_INSTRUCTION = (
     "You can end the voice session immediately. Call end_session when the user "
     "dismisses you: stop, shut up, never mind, cancel, go away, or a false wake "
     "they want to ignore. Call it right away and do not speak afterward. Sometimes "
-    "you might hear some voice notes after the user asks you to quit  -- it is fine to "
-    "ignore the content after since the user has already asked you to quit."
+    "you might hear some voice notes after the user asks you to quit -- it is fine to "
+    "ignore the content after since the user has already asked you to quit. "
     "They can always start a new session if they want to continue the conversation."
 )
 
@@ -50,7 +50,9 @@ async def setup_session_tools() -> ToolBundle:
     """Return the always-on end-session tool."""
     return ToolBundle(
         standard_tools=[end_session],
-        instructions=[END_SESSION_INSTRUCTION],
+        instructions=[
+            ToolGuidance(tool_names=(end_session.__name__,), text=END_SESSION_INSTRUCTION)
+        ],
     )
 
 

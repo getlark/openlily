@@ -10,7 +10,7 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import LLMService
 from pipecat.services.mcp_service import MCPClient
 
-from .bundle import ToolBundle
+from .bundle import ToolBundle, ToolGuidance
 
 
 def prefix_tool_descriptions(tools_schema: ToolsSchema, label: str) -> ToolsSchema:
@@ -56,7 +56,13 @@ def mcp_tool_bundle(
     close_on_cleanup: bool,
     ready_log: str | None = None,
 ) -> ToolBundle:
-    """Build a ``ToolBundle`` from a connected MCP client and its schema."""
+    """Build a ``ToolBundle`` from a connected MCP client and its schema.
+
+    ``instructions`` are the module's plain prompt snippets (what
+    ``ToolSpec.mcp_instructions`` returns); each is paired here with the
+    LLM-visible names of every function the MCP server exposes, since one MCP
+    snippet describes the whole toolset.
+    """
 
     async def register(llm: LLMService) -> None:
         await mcp.register_tools_schema(tools_schema, llm)
@@ -73,9 +79,10 @@ def mcp_tool_bundle(
     if ready_log:
         logger.info(ready_log)
 
+    tool_names = tuple(tool.name for tool in tools_schema.standard_tools)
     return ToolBundle(
         standard_tools=list(tools_schema.standard_tools),
-        instructions=instructions,
+        instructions=[ToolGuidance(tool_names=tool_names, text=text) for text in instructions],
         registrations=[register],
         cleanups=cleanups,
     )

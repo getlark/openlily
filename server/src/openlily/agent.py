@@ -45,6 +45,7 @@ from openlily.sound import ReadinessChimeFrame, chime_pcm
 from openlily.tools.bundle import (
     ToolBundle,
     register_tool_bundle,
+    render_tool_guidance,
     tools_schema_from_bundle,
 )
 from openlily.tools.runtime import setup_tools, warmup_tools
@@ -79,13 +80,18 @@ def resolve_brain(config: AgentConfig) -> BrainSpec:
     return get_brain(config.brain)
 
 
-def _resolve_system_instruction(config: AgentConfig, tool_instructions: list[str]) -> str:
-    """Compose the system prompt, honoring a string/callable override."""
+def _resolve_system_instruction(config: AgentConfig, tool_guidance: str) -> str:
+    """Compose the system prompt, honoring a string/callable override.
+
+    ``tool_guidance`` is the pre-rendered ``<ToolGuidance>`` block for the
+    session's active tools (``""`` when none contribute guidance), so a callable
+    override can inject it unconditionally.
+    """
     override = config.system_instruction
     if override is None:
-        return build_system_instruction(tool_instructions)
+        return build_system_instruction(tool_guidance)
     if callable(override):
-        return override(tool_instructions)
+        return override(tool_guidance)
     return override
 
 
@@ -128,7 +134,8 @@ async def build_pipeline(
     # tools are added by the tool runtime.
     tool_bundle = await setup_tools(brain.tools, config.enabled_tools)
 
-    system_instruction = _resolve_system_instruction(config, tool_bundle.instructions)
+    tool_guidance = render_tool_guidance(tool_bundle.instructions)
+    system_instruction = _resolve_system_instruction(config, tool_guidance)
     services = brain.build(system_instruction)
 
     # Now that the LLM exists, wire any LLM-dependent handlers (e.g. MCP tools).

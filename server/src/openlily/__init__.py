@@ -56,9 +56,11 @@ from openlily.prompt import build_system_instruction
 from openlily.sound import ReadinessChimeFrame, chime_pcm, working_sound_pcm
 from openlily.tools.bundle import (
     ToolBundle,
+    ToolGuidance,
     close_tool_bundle,
     merge_tool_bundles,
     register_tool_bundle,
+    render_tool_guidance,
     tools_schema_from_bundle,
 )
 from openlily.tools.contracts import (
@@ -93,6 +95,7 @@ __all__ = [
     "ToolActivation",
     "ToolBackend",
     "ToolBundle",
+    "ToolGuidance",
     "ToolId",
     "ToolName",
     "ToolSpec",
@@ -100,6 +103,7 @@ __all__ = [
     "merge_tool_bundles",
     "register_tool",
     "register_tool_bundle",
+    "render_tool_guidance",
     "setup_tools",
     "shutdown_tools",
     "tools_schema_from_bundle",
