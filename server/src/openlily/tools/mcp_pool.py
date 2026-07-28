@@ -36,7 +36,7 @@ class MCPToolsPool:
     _instance: MCPToolsPool | None = None
 
     def __init__(self) -> None:
-        self._pooled: dict[ToolId, _PooledMCP] = {}
+        self._pooled: dict[ToolId | str, _PooledMCP] = {}
         self._warmed = False
 
     @classmethod
@@ -56,7 +56,7 @@ class MCPToolsPool:
             return
 
         t0 = time.monotonic()
-        logger.info(f"Warming up MCP tools ({', '.join(spec.id.value for spec in enabled_mcp)})...")
+        logger.info(f"Warming up MCP tools ({', '.join(str(spec.id) for spec in enabled_mcp)})...")
 
         async def _warm_one(spec: ToolSpec) -> tuple[ToolSpec, MCPClient, ToolsSchema]:
             assert spec.mcp_connect is not None
@@ -64,7 +64,7 @@ class MCPToolsPool:
                 mcp, schema = await spec.mcp_connect()
             except Exception as e:
                 raise RuntimeError(
-                    f"Tool {spec.id.value!r} is enabled in brains.yaml but failed to "
+                    f"Tool {str(spec.id)!r} is enabled in brains.yaml but failed to "
                     f"connect to its MCP server. {spec.warmup_failure_hint}"
                 ) from e
             return spec, mcp, schema
@@ -99,16 +99,16 @@ class MCPToolsPool:
                 tools_schema=schema,
                 instructions=spec.mcp_instructions(),
             )
-            logger.info(f"{spec.id.value} MCP ready: {len(schema.standard_tools)} tools")
+            logger.info(f"{spec.id} MCP ready: {len(schema.standard_tools)} tools")
 
         elapsed = time.monotonic() - t0
         logger.info(f"MCP tools warmed in {elapsed:.2f}s")
         self._warmed = True
 
-    def is_ready(self, tool_id: ToolId) -> bool:
+    def is_ready(self, tool_id: ToolId | str) -> bool:
         return self._warmed and tool_id in self._pooled
 
-    def session_bundle(self, tool_id: ToolId) -> ToolBundle:
+    def session_bundle(self, tool_id: ToolId | str) -> ToolBundle:
         """Return a per-session bundle that reuses a pooled MCP connection."""
         pooled = self._pooled[tool_id]
         return mcp_tool_bundle(
@@ -125,7 +125,7 @@ class MCPToolsPool:
             try:
                 await pooled.mcp.close()
             except Exception:
-                logger.exception(f"MCP pool shutdown failed for {tool_id.value!r}")
+                logger.exception(f"MCP pool shutdown failed for {str(tool_id)!r}")
         self._pooled.clear()
         self._warmed = False
 

@@ -66,9 +66,10 @@ class BrainSpec:
     """When True, the pipeline omits STT/TTS (the LLM is a speech-to-speech model)."""
     build: Callable[[str], BrainServices]
     """Build the services. Receives the system instruction string."""
-    tools: tuple[ToolId, ...] = ()
-    """Registry tool IDs selected by this brain. Always-on and user-configured
-    tools are added centrally by the tool runtime."""
+    tools: tuple[ToolId | str, ...] = ()
+    """Registry tool IDs selected by this brain -- built-in ``ToolId`` members
+    or the plain-string ids of ``register_tool``'d custom tools. Always-on and
+    user-configured tools are added centrally by the tool runtime."""
     warmup: Callable[[], Awaitable[None]] | None = None
     """Optional: eagerly download/load this brain's slow first-run resources
     once at process startup, so nothing downloads or cold-starts mid-session

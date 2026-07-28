@@ -14,14 +14,25 @@ from .registry import (
     always_on_tools,
     get_configurable_tool,
     get_tool_spec,
+    is_registered,
 )
 
 
 def _enabled_specs(enabled_tool_names: Iterable[ToolName | str] = ()) -> list[ToolSpec]:
     specs: list[ToolSpec] = []
     for name in enabled_tool_names:
-        tool_name = name if isinstance(name, ToolName) else ToolName(name)
-        specs.append(get_configurable_tool(tool_name))
+        try:
+            tool_name = name if isinstance(name, ToolName) else ToolName(name)
+        except ValueError:
+            # Not a built-in configurable name: fall back to a registry lookup
+            # so ``register_tool``'d custom tools can be enabled by their id.
+            if not is_registered(name):
+                raise ValueError(
+                    f"{name!r} is not a configurable tool name or a registered tool id"
+                ) from None
+            specs.append(get_tool_spec(name))
+        else:
+            specs.append(get_configurable_tool(tool_name))
     return specs
 
 
@@ -59,9 +70,10 @@ async def setup_tools(
     """Build all tools active for one brain and one session.
 
     ``brain_tool_ids`` are the tool ids a brain declares (``BrainSpec.tools``);
-    ``enabled_tool_names`` are the optional configurable tools to turn on (what
-    ``brains.yaml``'s ``tools:`` list holds for the local CLI). The always-on
-    tools are added automatically.
+    ``enabled_tool_names`` are the optional tools to turn on (what
+    ``brains.yaml``'s ``tools:`` list holds for the local CLI) -- built-in
+    configurable names or the ids of ``register_tool``'d custom tools. The
+    always-on tools are added automatically.
     """
     t0 = time.monotonic()
     specs = _selected_specs(brain_tool_ids, enabled_tool_names)
@@ -73,7 +85,7 @@ async def setup_tools(
         if spec.backend is ToolBackend.MCP:
             if not pool.is_ready(spec.id):
                 raise RuntimeError(
-                    f"Tool {spec.id.value!r} is enabled but not in the MCP pool. "
+                    f"Tool {str(spec.id)!r} is enabled but not in the MCP pool. "
                     "warmup_tools() must run before setup_tools()."
                 )
             bundles.append(pool.session_bundle(spec.id))

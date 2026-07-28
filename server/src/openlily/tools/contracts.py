@@ -51,7 +51,7 @@ InstructionsFactory = Callable[[], list[str]]
 
 @dataclass(frozen=True)
 class ToolSpec:
-    id: ToolId
+    id: ToolId | str
     activation: ToolActivation
     backend: ToolBackend
     setup: SetupFactory

@@ -62,9 +62,10 @@ class AgentConfig:
     # ``register_brain``'d ones).
     brain: BrainSpec | BrainName | str
 
-    # Optional configurable tools to enable by name (what ``brains.yaml``'s
-    # ``tools:`` list holds). The brain's own declared tools and the always-on
-    # session tool are added automatically -- do not list them here.
+    # Optional tools to enable (what ``brains.yaml``'s ``tools:`` list holds):
+    # built-in configurable tools by ``ToolName``, or ``register_tool``'d custom
+    # tools by their plain-string id. The brain's own declared tools and the
+    # always-on session tool are added automatically -- do not list them here.
     enabled_tools: Sequence[ToolName | str] = field(default_factory=tuple)
 
     # Soft "working" cue during the gap before the bot speaks. ``True`` uses the

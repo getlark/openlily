@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 import openlily.tools.email as email_pkg
+import openlily.tools.registry as tools_registry
 import openlily.tools.runtime as tools_runtime
 import openlily.tools.web as web_pkg
 from openlily.tools.bundle import ToolBundle, ToolGuidance
@@ -17,6 +18,7 @@ from openlily.tools.contracts import ToolActivation, ToolBackend, ToolId, ToolNa
 from openlily.tools.email import setup_email_tools
 from openlily.tools.email.config import USER_EMAIL_ENV
 from openlily.tools.email.resend_provider import ResendProvider
+from openlily.tools.registry import register_tool
 from openlily.tools.runtime import setup_tools
 from openlily.tools.web import WEB_SEARCH_INSTRUCTION, setup_web_tools
 from openlily.tools.web.exa import ExaProvider
@@ -195,6 +197,58 @@ async def test_enabled_mcp_tool_requires_warmup(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(RuntimeError, match="warmup_tools"):
         await tools_runtime.setup_tools(enabled_tool_names=[ToolName.X])
+
+
+def _register_custom_tool(
+    monkeypatch: pytest.MonkeyPatch, guidance: ToolGuidance
+) -> ToolSpec:
+    """Register a string-id custom tool against a throwaway copy of the registry."""
+
+    async def fake_setup() -> ToolBundle:
+        return ToolBundle(standard_tools=[_noop], instructions=[guidance])
+
+    spec = ToolSpec(
+        id="my_custom_tool",
+        activation=ToolActivation.BRAIN,
+        backend=ToolBackend.LOCAL,
+        setup=fake_setup,
+    )
+    monkeypatch.setattr(tools_registry, "TOOL_REGISTRY", dict(tools_registry.TOOL_REGISTRY))
+    register_tool(spec)
+    return spec
+
+
+async def test_custom_string_id_tool_via_brain_tool_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guidance = ToolGuidance(tool_names=("_noop",), text="Custom capability")
+    _register_custom_tool(monkeypatch, guidance)
+    monkeypatch.setattr(tools_runtime, "always_on_tools", lambda: ())
+
+    bundle = await setup_tools(brain_tool_ids=("my_custom_tool",))
+
+    assert bundle.standard_tools == [_noop]
+    assert bundle.instructions == [guidance]
+
+
+async def test_custom_string_id_tool_via_enabled_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guidance = ToolGuidance(tool_names=("_noop",), text="Custom capability")
+    _register_custom_tool(monkeypatch, guidance)
+    monkeypatch.setattr(tools_runtime, "always_on_tools", lambda: ())
+
+    bundle = await setup_tools(enabled_tool_names=["my_custom_tool"])
+
+    assert bundle.standard_tools == [_noop]
+    assert bundle.instructions == [guidance]
+
+
+async def test_unknown_enabled_tool_name_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tools_runtime, "always_on_tools", lambda: ())
+
+    with pytest.raises(ValueError, match="not a configurable tool name"):
+        await setup_tools(enabled_tool_names=["no_such_tool"])
 
 
 async def test_brain_declared_mcp_tool_is_warmed(monkeypatch: pytest.MonkeyPatch) -> None:
