@@ -25,7 +25,9 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
+    LLMAssistantAggregator,
     LLMContextAggregatorPair,
+    LLMUserAggregator,
     LLMUserAggregatorParams,
 )
 from pipecat.transports.base_transport import BaseTransport
@@ -36,6 +38,7 @@ from openlily.config import (
     IDLE_KEEPALIVE_MAX_BUSY_SECS,
     IDLE_KEEPALIVE_MAX_INTERVAL_SECS,
     AgentConfig,
+    PipelineExtensions,
     WorkingSoundConfig,
 )
 from openlily.idle_keepalive import BotBusyFrame, IdleKeepaliveProcessor
@@ -62,11 +65,35 @@ class Agent:
 
     ``tool_bundle`` is returned so the caller can run its cleanups (see
     ``close_tool_bundle``) when the session ends.
+
+    ``context`` and the aggregator pair are exposed so apps can subscribe to
+    pipecat's turn events (``on_user_turn_started/stopped/idle`` on
+    ``user_aggregator``, ``on_assistant_turn_started/stopped`` on
+    ``assistant_aggregator``) without reaching into pipeline internals.
     """
 
     pipeline: Pipeline
     worker: PipelineWorker
     tool_bundle: ToolBundle
+    context: LLMContext
+    user_aggregator: LLMUserAggregator
+    assistant_aggregator: LLMAssistantAggregator
+
+
+@dataclass
+class BuiltPipeline:
+    """Everything :func:`build_pipeline` assembles for one session.
+
+    ``tool_bundle`` carries the cleanups to run at session end; ``context``
+    and the aggregator pair are the same objects wired into ``pipeline``, so
+    callers can attach event handlers to them.
+    """
+
+    pipeline: Pipeline
+    tool_bundle: ToolBundle
+    context: LLMContext
+    user_aggregator: LLMUserAggregator
+    assistant_aggregator: LLMAssistantAggregator
 
 
 def resolve_brain(config: AgentConfig) -> BrainSpec:
@@ -105,13 +132,12 @@ def _idle_keepalive_interval_secs(idle_timeout_secs: float, max_interval_secs: f
     return max(1.0, min(max_interval_secs, idle_timeout_secs / 3.0))
 
 
-async def build_pipeline(
-    transport: BaseTransport, config: AgentConfig
-) -> tuple[Pipeline, ToolBundle]:
+async def build_pipeline(transport: BaseTransport, config: AgentConfig) -> BuiltPipeline:
     """Assemble the pipeline for the configured brain.
 
-    Returns the merged ``ToolBundle`` too, so the caller can run its cleanups
-    (``close_tool_bundle``) when the session ends.
+    The returned :class:`BuiltPipeline` carries the merged ``ToolBundle`` (so
+    the caller can run its cleanups via ``close_tool_bundle`` when the session
+    ends) plus the ``LLMContext`` and aggregator pair wired into the pipeline.
     """
     brain = resolve_brain(config)
 
@@ -191,6 +217,9 @@ async def build_pipeline(
             vad_analyzer=SileroVADAnalyzer(params=vad_params),
             user_mute_strategies=user_mute_strategies,
             user_turn_strategies=user_turn_strategies,
+            # 0 (the config default) disables idle detection -- pipecat's own
+            # default. Non-zero arms the aggregator's on_user_turn_idle event.
+            user_idle_timeout=config.user_idle_timeout_secs,
         ),
         # Realtime (speech-to-speech) services need different context-write
         # timing; the aggregator warns if this isn't set for them.
@@ -255,13 +284,21 @@ async def build_pipeline(
             WorkingSoundProcessor(initial_delay_secs=working_sound.initial_delay_secs)
         ]
 
+    # App-supplied processors, inserted at fixed slots: after_llm immediately
+    # after the LLM service, before_output immediately before transport.output().
+    extensions = config.custom_processors or PipelineExtensions()
+    after_llm = list(extensions.after_llm)
+    before_output = list(extensions.before_output)
+
     if brain.is_realtime:
         elements = [
             transport.input(),
             user_aggregator,
             services.llm,
+            *after_llm,
             *idle_keepalive_processors,
             *working_sound_processors,
+            *before_output,
             transport.output(),
             assistant_aggregator,
         ]
@@ -271,14 +308,22 @@ async def build_pipeline(
             services.stt,
             user_aggregator,
             services.llm,
+            *after_llm,
             services.tts,
             *idle_keepalive_processors,
             *working_sound_processors,
+            *before_output,
             transport.output(),
             assistant_aggregator,
         ]
 
-    return Pipeline(elements), tool_bundle
+    return BuiltPipeline(
+        pipeline=Pipeline(elements),
+        tool_bundle=tool_bundle,
+        context=context,
+        user_aggregator=user_aggregator,
+        assistant_aggregator=assistant_aggregator,
+    )
 
 
 def build_worker(pipeline: Pipeline, config: AgentConfig) -> PipelineWorker:
@@ -304,6 +349,9 @@ def build_worker(pipeline: Pipeline, config: AgentConfig) -> PipelineWorker:
         cancel_on_idle_timeout=True,
         cancel_runner_on_idle_timeout=True,
         observers=observers,
+        # Opaque app-defined bag; pipecat hands it to tool handlers as
+        # FunctionCallParams.app_resources and exposes it as worker.app_resources.
+        app_resources=config.app_resources,
     )
 
     @worker.event_handler("on_idle_timeout")
@@ -336,9 +384,16 @@ async def create_agent(transport: BaseTransport, config: AgentConfig) -> Agent:
     brain or tools have slow first-run work. Run ``close_tool_bundle`` on the
     returned ``tool_bundle`` and ``shutdown_tools`` when the session/process ends.
     """
-    pipeline, tool_bundle = await build_pipeline(transport, config)
-    worker = build_worker(pipeline, config)
-    return Agent(pipeline=pipeline, worker=worker, tool_bundle=tool_bundle)
+    built = await build_pipeline(transport, config)
+    worker = build_worker(built.pipeline, config)
+    return Agent(
+        pipeline=built.pipeline,
+        worker=worker,
+        tool_bundle=built.tool_bundle,
+        context=built.context,
+        user_aggregator=built.user_aggregator,
+        assistant_aggregator=built.assistant_aggregator,
+    )
 
 
 async def _warmup_brain(brain: BrainSpec) -> None:
@@ -366,6 +421,7 @@ async def warmup(config: AgentConfig) -> None:
 
 __all__ = [
     "Agent",
+    "BuiltPipeline",
     "build_pipeline",
     "build_worker",
     "create_agent",

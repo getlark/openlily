@@ -12,12 +12,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pipecat.audio.vad.vad_analyzer import VADParams
     from pipecat.observers.base_observer import BaseObserver
     from pipecat.pipeline.worker import PipelineParams
+    from pipecat.processors.frame_processor import FrameProcessor
     from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
     from openlily.brains import BrainName, BrainSpec
@@ -46,6 +47,25 @@ class WorkingSoundConfig:
     """Tuning for the soft "working" cue played while the bot is busy."""
 
     initial_delay_secs: float = WORKING_SOUND_INITIAL_DELAY_SECS
+
+
+@dataclass(frozen=True)
+class PipelineExtensions:
+    """App-supplied frame processors inserted at fixed pipeline slots.
+
+    Lets an app inject frame-level behavior (e.g. produce ``TTSSpeakFrame``s,
+    observe interruption and ``BotStoppedSpeakingFrame`` traffic in order)
+    without openlily knowing why. Both slots default to empty, which leaves
+    the pipeline exactly as it is today.
+    """
+
+    # Inserted immediately after the LLM service: before TTS in a cascade
+    # pipeline, before the idle-keepalive processor in a realtime one.
+    after_llm: Sequence[FrameProcessor] = ()
+
+    # Inserted immediately before ``transport.output()`` (after openlily's
+    # own idle-keepalive and working-sound processors).
+    before_output: Sequence[FrameProcessor] = ()
 
 
 @dataclass
@@ -133,6 +153,23 @@ class AgentConfig:
     # detection there.
     user_turn_strategies: UserTurnStrategies | None = None
 
+    # Extra frame processors to insert at fixed pipeline slots (see
+    # ``PipelineExtensions``). ``None`` (default) inserts nothing -- the
+    # pipeline is byte-for-byte today's.
+    custom_processors: PipelineExtensions | None = None
+
+    # Opaque application-defined bag passed to ``PipelineWorker(app_resources=...)``.
+    # Pipecat delivers it to tool handlers as ``FunctionCallParams.app_resources``
+    # and exposes it as ``worker.app_resources``; openlily never reads it.
+    app_resources: Any = None
+
+    # Seconds of user inactivity (after the bot stops speaking) before the user
+    # aggregator fires its ``on_user_turn_idle`` event, which apps can subscribe
+    # to via ``Agent.user_aggregator``. ``0`` (default) disables idle detection
+    # entirely -- pipecat's own default and today's behavior. Distinct from
+    # ``idle_timeout_secs``, which ends the whole session.
+    user_idle_timeout_secs: float = 0
+
     # Whether the user can barge in (interrupt the bot) while it's speaking.
     # ``True`` (default) is normal turn-taking: user speech during bot output
     # interrupts it. ``False`` disallows barge-in by muting the user's mic while
@@ -153,5 +190,6 @@ __all__ = [
     "IDLE_KEEPALIVE_MAX_INTERVAL_SECS",
     "WORKING_SOUND_INITIAL_DELAY_SECS",
     "AgentConfig",
+    "PipelineExtensions",
     "WorkingSoundConfig",
 ]

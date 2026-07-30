@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from openlily.agent import (
     Agent,
+    BuiltPipeline,
     build_pipeline,
     build_worker,
     create_agent,
@@ -48,6 +49,7 @@ from openlily.brains import (
 )
 from openlily.config import (
     AgentConfig,
+    PipelineExtensions,
     WorkingSoundConfig,
 )
 from openlily.idle_keepalive import BotBusyFrame, IdleKeepaliveProcessor
@@ -80,6 +82,8 @@ __all__ = [
     # Factory / config
     "Agent",
     "AgentConfig",
+    "BuiltPipeline",
+    "PipelineExtensions",
     "WorkingSoundConfig",
     "build_pipeline",
     "build_worker",
