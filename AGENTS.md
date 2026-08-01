@@ -68,3 +68,45 @@ Use the highest rung that works right now:
   become the schema. See [server/tools/base.py](server/tools/base.py).
 
 When in doubt about anything Pipecat, `check_deprecation` / `search_api` first.
+
+## Cursor Cloud specific instructions
+
+The dev environment is already provisioned (the startup update script runs
+`uv sync` for the `server/` project with the `local`, `web`, and `email` extras;
+`uv` and Python 3.11 — pinned by `server/.python-version` — are baked into the
+snapshot, and PortAudio system libs are installed for PyAudio). You do **not**
+need to re-install anything to start working. All commands run from `server/`
+via `uv run` — see [CONTRIBUTING.md](CONTRIBUTING.md) for the canonical
+lint/test/run commands (`uv run ruff check .`, `uv run pyright`, `uv run pytest`,
+`uv run bot.py --mode …`). The `local-models` extra is intentionally **not**
+installed: its `mlx-whisper` runtime is Apple-Silicon only, so the
+`local_whisper_ollama_kokoro` brain cannot run on this Linux VM.
+
+Non-obvious caveats worth knowing here:
+
+- **This VM has no audio device.** The `local` and `local-with-wake-word` run
+  modes need a real mic/speakers (PyAudio) and cannot run headless. Use
+  `uv run bot.py --mode webrtc` — it serves Pipecat's prebuilt browser client at
+  `http://localhost:7860/client/`, where the mic/speakers live in the *browser*,
+  not the VM. That is the runnable service to exercise the app here.
+- **`cli.py` calls `load_dotenv(override=True)`, so `server/.env` OVERRIDES real
+  environment variables** (even a blank `KEY=` clobbers it to empty). Cursor
+  injects Secrets as env vars, so do **not** create a `server/.env` that sets any
+  key you also provide as a Secret — it will silently override the Secret. Prefer
+  no `.env` at all (env-var Secrets flow straight through), or put only
+  non-secret tuning in it. `.env` and `brains.yaml` are git-ignored.
+- **Provider keys gate a real conversation, not startup.** Keys are read when the
+  brain is *built* (on WebRTC client connect), not at server boot. The default
+  `cartesia_openai` brain needs `OPENAI_API_KEY` + `CARTESIA_API_KEY`;
+  `openai_standard`/`openai_realtime` need only `OPENAI_API_KEY` (set
+  `default_brain` in `brains.yaml`). Without valid keys the server still boots and
+  the client still reaches `READY`/`READY`; the pipeline then fails at the first
+  STT/LLM/TTS call with `HTTP 401` — that 401 confirms the wiring is correct.
+- **Driving a turn without a mic:** the automated browser has no real microphone,
+  so a *spoken* exchange can't be scripted headlessly. The `/client/` Playground
+  has a "Type message" text box that (with a valid `OPENAI_API_KEY`) drives the
+  LLM directly — the easiest way to exercise core functionality end to end here.
+- **Pre-existing lint/type findings:** the pinned-range tool versions that resolve
+  here (ruff `0.15.x`, pyright `1.1.410`) report a few findings in committed code
+  (ruff `UP035`/`UP017`; pyright `reportArgumentType` in `agent.py`). These
+  predate this setup and are not caused by environment changes.
