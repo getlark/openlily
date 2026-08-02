@@ -11,8 +11,10 @@ text-to-speech), pick a provider you trust, and turn on only the tools you want.
 
 You can also run it on other standalone devices like raspberry pi, mac mini, etc.
 
-> **Don't want to self-host?** Try the managed, web-hosted version at
-> [asklyla.ai](https://asklyla.ai) — no setup or API keys required.
+> [!TIP]
+> **Don't want to self-host?**
+> Try the managed, web-hosted version at **[asklyla.ai](https://asklyla.ai)** —
+> no setup or API keys required.
 
 ## Demo
 
